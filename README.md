@@ -1,14 +1,40 @@
 #Pre-requisites
 
 * Ruby environment with ruby version > 1.9.1 (see below)
-* Configuration file config.yml, unless you
+* Configuration file config.yml, unless you supply the credentials on the command line
 
 
 
 ---
 #Installation:
 
-## Ubuntu 12.04 LTS
+## config.yml
+
+* Create a read-only user in AWS and associate it with your environment
+* Put the access key and secret key in a config.yml file in the same directory as these scripts (or somewhere else if you intend to use the -C parameter)
+
+````
+aws:
+  #======================
+  #--- authentication
+  #======================
+  access_key_id: YOUR_ACCESS_KEY
+  secret_access_key: YOUR_SECRET_KEY
+  
+  #========================================
+  #--- default region, unless overridden on the command line
+  #========================================
+  #--- possible regions us-west-1 us-west-2 eu-west-1, etc...
+  region: us-west-2
+
+  #======================
+  #--- Proxy config
+  #======================
+  #proxy_uri: http://user:passwd@IP:PORT
+
+````
+## Ruby
+### Ubuntu 12.04 LTS
 
 sudo apt-get install -y ruby1.9.1 ruby1.9.1-dev \
      rubygems1.9.1 irb1.9.1 ri1.9.1 rdoc1.9.1 \
@@ -44,7 +70,7 @@ sudo update-alternatives --install /usr/bin/ruby ruby /usr/bin/ruby1.9.1 400 \
  ruby --version
 ````
 
-## RedHat/CentOS
+### RedHat/CentOS
 
 https://gist.github.com/trevorrowe/1870314
 
