@@ -43,11 +43,13 @@ aws:
 ## Ruby
 ### Ubuntu 12.04 LTS
 
+````
 sudo apt-get install -y ruby1.9.1 ruby1.9.1-dev \
      rubygems1.9.1 irb1.9.1 ri1.9.1 rdoc1.9.1 \
 	 build-essential libopenssl-ruby1.9.1 libssl-dev zlib1g-dev
 
 sudo gem install aws-sdk-core --pre
+````
 
 Note: to make ruby1.9.1 default on your system, follow the instructions on:
 
