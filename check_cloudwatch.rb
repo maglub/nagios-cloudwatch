@@ -117,7 +117,7 @@ Usage: #{$0} [-v]
   --config, -C:                            Use config file (default ../etc/config.yml)
   --region=region, -r region:              Connect to region (i.e us-west-1, us-west-2)
   --access_key=ACCESS_KEY, -A ACCESS_KEY:  Use access key
-  --secret=ACCESS_KEY, -S ACCESS_KEY:      Use secret access key
+  --secret_key=ACCESS_KEY, -S ACCESS_KEY:      Use secret access key
   --instance, -i:                          Instance id or Load balancer name
   --list-metrics                           List available metrics (should be used together with -i)
   --metric=<metric>                        Metric to report
@@ -351,7 +351,7 @@ opts.set_options(
   [ "--region", "-r", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--access_key", "-a", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--instance", "-i", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--secret", "-s", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--secret_key", "-s", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--list-metrics", "-l", GetoptLong::NO_ARGUMENT],
   [ "--namespace", "-N", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--metric", GetoptLong::OPTIONAL_ARGUMENT],
