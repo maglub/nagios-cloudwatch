@@ -95,6 +95,10 @@ https://gist.github.com/trevorrowe/1870314
 	sudo gem install aws-sdk --no-ri --no-rdoc
 
 
+## OP5 Appliance (CentOS)
+
+Pre-requisites already in place.
+
 #Usage
 
 ## Examples
