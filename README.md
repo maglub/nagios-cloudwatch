@@ -103,6 +103,39 @@ Pre-requisites already in place.
 
 ## Examples
 
+* Check an ELB (Elastic Load Balancer) for the number of healthy hosts. 
+
+````
+./check_cloudwatch.rb --instance="<INSTANCE_NAME>" --namespace="AWS/ELB" --metric="HealthyHostCount" --window=120 --period=60 --critical=:1+ --warning=:2+
+OK - Metric: HealthyHostCount, Last Average: 2.0 Count (2014-06-14 13:34:00 UTC)
+|Average=2.0,Minimum=2.0,Maximum=2.0,Sum=240.0
+````
+
+## Thresholds
+
+--warning={@}<threshold>{+}, -w {@}<threshold>{+}
+--critical={@}<threshold>{+}, -c {@}<threshold>{+}
+	
+The threshold parameter can be a single value or a range, and can handle decimal values.
+
+* A threshold can be checked to be within a range, or outside a range.
+* To alert when a value is outside a range, use the prefix "@".
+
+The thresholds can be "soft" or "hard", meaning that ha hard threshold will include the parameter value (by comparing >= or <=). A soft threshold means that the check will not trigger when the checked value is equal to the threshold value (by comparing > or <).
+
+A soft threshold is selected by suffixing "+" to the threshold.
+
+Examples of valid thresholds are:
+
+1, 1.0, 1:+, :1.5, 0:1000, @1:100
+
+* "-c 75"    will trigger when the value is equal to or larger than 75
+* "-c 75+"   will trigger when the value is larger than 75
+* "-c 0:1"   will trigger when the value is equal to or larger than 0 and equal to or less than 1 
+* "-c 0:1+"  will trigger when the value is larger than 0 and less than 1
+* "-c @0:1+"  will trigger when the value is outside the soft range
+
+
 ## Listing metrics
 
 You can list available metrics for your instance, your load balancer, etc, by using the --list-metrics parameter.
