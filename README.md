@@ -5,6 +5,14 @@
 
 #Installation:
 
+## This git repo
+
+````
+mkdir /path/to/your/plugins
+git clone git@github.com:maglub/nagios-cloudwatch.git
+````
+
+
 ## config.yml
 
 * Create a read-only user in AWS and associate it with your environment
@@ -29,13 +37,6 @@ aws:
   #======================
   #proxy_uri: http://user:passwd@IP:PORT
 
-````
-
-## This git repo
-
-````
-mkdir /path/to/your/plugins
-git clone git@github.com:maglub/nagios-cloudwatch.git
 ````
 
 ## Ruby
