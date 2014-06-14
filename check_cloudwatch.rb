@@ -376,7 +376,7 @@ opts.each { |opt,arg|
       regionOverride    = arg
     when '--access_key'
       accessKeyOverride = arg
-    when '--secret'
+    when '--secret_key'
       secretKeyOverride = arg
     when '--instance'
       instance_id       = arg
