@@ -1,3 +1,16 @@
+#Description
+
+Nagios Cloudwatch is a set of scripts to help with the Nagios (and derivates) monitoring of Amazon Cloud resources.
+
+Possible checks:
+
+* Amazon EC2 statuses
+  * Instance running
+  
+* Amazon Cloudwatch statistics
+  - Reading/reporting on EC2 instance statistics metrics, such as CPUUtilization, etc
+  - Reading/reporging on ELB statistics, such as HealthyHostCount, Latency, etc
+
 #Pre-requisites
 
 * Ruby environment with ruby version > 1.9.1 (see below)
@@ -109,6 +122,12 @@ Pre-requisites already in place.
 ./check_cloudwatch.rb --instance="<INSTANCE_NAME>" --namespace="AWS/ELB" --metric="HealthyHostCount" --window=120 --period=60 --critical=:1+ --warning=:2+
 OK - Metric: HealthyHostCount, Last Average: 2.0 Count (2014-06-14 13:34:00 UTC)
 |Average=2.0,Minimum=2.0,Maximum=2.0,Sum=240.0
+````
+
+* Check an ELB for the total number of ok requests over the last 5 minutes, warning when the number of requests equal or exceed 10 requests, critical at 15
+
+````
+./check_cloudwatch.rb -i <INSTANCE_NAME> --window=3600 --metric=HTTPCode_Backend_2XX --window=300 --period=300 --critical=15 --warning=10 --statistics="Sum"
 ````
 
 ## Thresholds
