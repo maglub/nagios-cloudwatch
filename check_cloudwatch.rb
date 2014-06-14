@@ -459,8 +459,6 @@ AWS.config(:access_key_id => accessKeyOverride) unless accessKeyOverride.to_s.em
 AWS.config(:secret_access_key => secretKeyOverride) unless secretKeyOverride.to_s.empty?
 #AWS.config(:namespace => secretKeyOverride) unless namespaceOverride.to_s.empty?
 
-pp secretKeyOverride
-
 #============================================
 #============================================
 #                   MAIN 
