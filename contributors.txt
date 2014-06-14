@@ -1,1 +1,5 @@
-Magnus Lübeck
+================================================
+This is a list of contributors to this project
+================================================
+
+Magnus Lübeck, magnus.luebeck@kmggroup.ch, http://www.kmggroup.ch
