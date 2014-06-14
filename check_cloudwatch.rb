@@ -408,8 +408,13 @@ opts.each { |opt,arg|
 #--- minor quirks
 
 #--- if optPeriod is not set, the period should be equal to the window. It can be useful to use --window=3600 --period=60 --debug
-#--- to see data points over a period of one hour
-statisticsPeriod = statisticsWindow if optPeriod.nil?
+#--- to see data points over a period of one hour.
+#--- Some metrics are not updated on a minute basis! To get the latest value, you have to ask for, say, a window of 600 seconds, but
+#--- set the bucket size to 60 or 120 seconds.
+
+statisticsPeriod = statisticsWindow if (optPeriod.nil? && !optWindow.nil?)
+$stderr.puts "* Setting up statistics window = #{statisticsWindow} and statistics period = #{statisticsPeriod}" if $debug
+
 $verbose = true if $debug
 
 #============================================
