@@ -113,9 +113,9 @@ OK - Metric: HealthyHostCount, Last Average: 2.0 Count (2014-06-14 13:34:00 UTC)
 
 ## Thresholds
 
---warning={@}<threshold>{+}, -w {@}<threshold>{+}
---critical={@}<threshold>{+}, -c {@}<threshold>{+}
-	
+* --warning={@}<threshold>{+}, -w {@}<threshold>{+}
+* --critical={@}<threshold>{+}, -c {@}<threshold>{+}
+
 The threshold parameter can be a single value or a range, and can handle decimal values.
 
 * A threshold can be checked to be within a range, or outside a range.
