@@ -9,6 +9,7 @@
 
 ````
 mkdir /path/to/your/plugins
+cd /path/to/your/plugins
 git clone git@github.com:maglub/nagios-cloudwatch.git
 ````
 
