@@ -420,7 +420,7 @@ if File.exist?(configFile)
   $stderr.puts "* Reading config file #{configFile}" if $debug
   config = YAML.load(File.read(configFile))
 else
-  puts "WARNING: #{configFile} does not exist"
+  $stderr.puts "WARNING: #{configFile} does not exist" if $verbose
 end
 
 #============================================
@@ -445,7 +445,7 @@ $stderr.puts "* Setting up dimensions to #{dimensions}" if $debug
 
 $stderr.puts "* AWS Config" if $debug
 
-AWS.config(config["aws"])
+AWS.config(config["aws"]) unless config.nil?
 #--- if --region was used
 AWS.config(:region => regionOverride) unless regionOverride.to_s.empty?
 #--- if --access_key was used
@@ -454,7 +454,7 @@ AWS.config(:access_key_id => accessKeyOverride) unless accessKeyOverride.to_s.em
 AWS.config(:secret_access_key => secretKeyOverride) unless secretKeyOverride.to_s.empty?
 #AWS.config(:namespace => secretKeyOverride) unless namespaceOverride.to_s.empty?
 
-
+pp secretKeyOverride
 
 #============================================
 #============================================
