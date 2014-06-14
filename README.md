@@ -3,9 +3,6 @@
 * Ruby environment with ruby version > 1.9.1 (see below)
 * Configuration file config.yml, unless you supply the credentials on the command line
 
-
-
----
 #Installation:
 
 ## config.yml
@@ -85,14 +82,22 @@ https://gist.github.com/trevorrowe/1870314
 	 
 	sudo gem install aws-sdk --no-ri --no-rdoc
 
----
+
 #Hints
 
 ## Statistics window, and statistics period
 
-The collection of AWS metrics is not done on a conform frequency. For example CPUUtilization is collected every 5 minutes. If you are asking for a window of 60 seconds and a period of 60 seconds, there is a risk that Cloudwatch will return an empty result set, since there is no data to be presented for that period. This is a feature of the AWS Cloudwatch.
+The collection of AWS metrics is not done every minute. For example CPUUtilization is collected every 5 minutes. If you are asking for a window of 60 seconds and a period of 60 seconds, it is very likely that Cloudwatch will return an empty result set since there is no data to be presented for that period. This is a feature of the AWS Cloudwatch.
 
 The workaround for this is to ask for a longer period, say 10 minutes or longer, to make sure you will get at least one metric in your result set.
 
   ./check_cloudwatch.rb --namespace="AWS/EC2" -i <instance_id> --metric="CPUUtilization" --window=600 --period=60
+  
+## Listing metrics
+
+You can list available metrics for your instance, your load balancer, etc, by using the --list-metrics parameter.
+
+  ./check_cloudwatch.rb --namespace="AWS/EC2" -i <instance_id> --list-metrics
+
+
 
