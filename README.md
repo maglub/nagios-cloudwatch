@@ -30,6 +30,14 @@ aws:
   #proxy_uri: http://user:passwd@IP:PORT
 
 ````
+
+## This git repo
+
+````
+mkdir /path/to/your/plugins
+git clone git@github.com:maglub/nagios-cloudwatch.git
+````
+
 ## Ruby
 ### Ubuntu 12.04 LTS
 
@@ -83,7 +91,15 @@ https://gist.github.com/trevorrowe/1870314
 	sudo gem install aws-sdk --no-ri --no-rdoc
 
 
-#Hints
+#Usage
+
+## Examples
+
+## Listing metrics
+
+You can list available metrics for your instance, your load balancer, etc, by using the --list-metrics parameter.
+
+  ./check_cloudwatch.rb --namespace="AWS/EC2" -i <instance_id> --list-metrics
 
 ## Statistics window, and statistics period
 
@@ -93,11 +109,5 @@ The workaround for this is to ask for a longer period, say 10 minutes or longer,
 
   ./check_cloudwatch.rb --namespace="AWS/EC2" -i <instance_id> --metric="CPUUtilization" --window=600 --period=60
   
-## Listing metrics
-
-You can list available metrics for your instance, your load balancer, etc, by using the --list-metrics parameter.
-
-  ./check_cloudwatch.rb --namespace="AWS/EC2" -i <instance_id> --list-metrics
-
 
 
