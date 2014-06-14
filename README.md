@@ -1,6 +1,4 @@
-=============================================================
 #Pre-requisites
-=============================================================
 
 * Ruby environment with ruby version > 1.9.1 (see below)
 * Configuration file config.yml, unless you
@@ -8,9 +6,7 @@
 
 
 ---
-=============================================================
 #Installation:
-=============================================================
 
 ## Ubuntu 12.04 LTS
 
@@ -64,9 +60,7 @@ https://gist.github.com/trevorrowe/1870314
 	sudo gem install aws-sdk --no-ri --no-rdoc
 
 ---
-=============================================================
 #Hints
-=============================================================
 
 ## Statistics window, and statistics period
 
