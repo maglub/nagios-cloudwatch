@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Nagios-cloudwatch : Nagios check for AWS Cloudwatch statistics/metrics" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Nagios-cloudwatch</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/maglub/nagios-cloudwatch">View on GitHub</a>
+
+          <h1 id="project_title">Nagios-cloudwatch</h1>
+          <h2 id="project_tagline">Nagios check for AWS Cloudwatch statistics/metrics</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/maglub/nagios-cloudwatch/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/maglub/nagios-cloudwatch/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>
+<a name="description" class="anchor" href="#description"><span class="octicon octicon-link"></span></a>Description</h1>
+
+<p>Nagios Cloudwatch is a set of scripts to help with the Nagios (and derivates) monitoring of Amazon Cloud resources.</p>
+
+<p>Possible checks:</p>
+
+<ul>
+<li>
+<p>Amazon EC2 statuses</p>
+
+<ul>
+<li>Instance running</li>
+</ul>
+</li>
+<li>
+<p>Amazon Cloudwatch statistics</p>
+
+<ul>
+<li>Reading/reporting on EC2 instance statistics metrics, such as CPUUtilization, etc</li>
+<li>Reading/reporging on ELB statistics, such as HealthyHostCount, Latency, etc</li>
+</ul>
+</li>
+</ul><h1>
+<a name="pre-requisites" class="anchor" href="#pre-requisites"><span class="octicon octicon-link"></span></a>Pre-requisites</h1>
+
+<ul>
+<li>Ruby environment with ruby version &gt; 1.9.1 (see below)</li>
+<li>Configuration file config.yml, unless you supply the credentials on the command line</li>
+</ul><h1>
+<a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation:</h1>
+
+<h2>
+<a name="this-git-repo" class="anchor" href="#this-git-repo"><span class="octicon octicon-link"></span></a>This git repo</h2>
+
+<pre><code>mkdir /path/to/your/plugins
+cd /path/to/your/plugins
+git clone git@github.com:maglub/nagios-cloudwatch.git
+</code></pre>
+
+<h2>
+<a name="configyml" class="anchor" href="#configyml"><span class="octicon octicon-link"></span></a>config.yml</h2>
+
+<ul>
+<li>Create a read-only user in AWS and associate it with your environment</li>
+<li>Put the access key and secret key in a config.yml file in the same directory as these scripts (or somewhere else if you intend to use the -C parameter)</li>
+</ul><pre><code>aws:
+  #======================
+  #--- authentication
+  #======================
+  access_key_id: YOUR_ACCESS_KEY
+  secret_access_key: YOUR_SECRET_KEY
+
+  #========================================
+  #--- default region, unless overridden on the command line
+  #========================================
+  #--- possible regions us-west-1 us-west-2 eu-west-1, etc...
+  region: us-west-2
+
+  #======================
+  #--- Proxy config
+  #======================
+  #proxy_uri: http://user:passwd@IP:PORT
+
+</code></pre>
+
+<h2>
+<a name="ruby" class="anchor" href="#ruby"><span class="octicon octicon-link"></span></a>Ruby</h2>
+
+<h3>
+<a name="ubuntu-1204-lts" class="anchor" href="#ubuntu-1204-lts"><span class="octicon octicon-link"></span></a>Ubuntu 12.04 LTS</h3>
+
+<p>If your installation come with ruby 1.8, you might have to start the script with <code>/usr/bin/ruby1.9.1 ./check_cloudwatch.rb</code>, unless you follow the second step on how to make ruby1.9.1 default in your installation.</p>
+
+<pre><code>sudo apt-get install -y ruby1.9.1 ruby1.9.1-dev \
+     rubygems1.9.1 irb1.9.1 ri1.9.1 rdoc1.9.1 \
+     build-essential libopenssl-ruby1.9.1 libssl-dev zlib1g-dev
+
+sudo gem install aws-sdk-core --pre
+</code></pre>
+
+<p>Note: to make ruby1.9.1 default on your system, follow the instructions on:</p>
+
+<ul>
+<li><a href="https://leonard.io/blog/2012/05/installing-ruby-1-9-3-on-ubuntu-12-04-precise-pengolin/">https://leonard.io/blog/2012/05/installing-ruby-1-9-3-on-ubuntu-12-04-precise-pengolin/</a></li>
+</ul><pre><code>sudo apt-get update
+
+sudo apt-get install ruby1.9.1 ruby1.9.1-dev \
+   rubygems1.9.1 irb1.9.1 ri1.9.1 rdoc1.9.1 \
+   build-essential libopenssl-ruby1.9.1 libssl-dev zlib1g-dev
+
+sudo update-alternatives --install /usr/bin/ruby ruby /usr/bin/ruby1.9.1 400 \
+          --slave   /usr/share/man/man1/ruby.1.gz ruby.1.gz \
+                         /usr/share/man/man1/ruby1.9.1.1.gz \
+         --slave   /usr/bin/ri ri /usr/bin/ri1.9.1 \
+         --slave   /usr/bin/irb irb /usr/bin/irb1.9.1 \
+         --slave   /usr/bin/rdoc rdoc /usr/bin/rdoc1.9.1
+
+ # choose your interpreter
+ # changes symlinks for /usr/bin/ruby , /usr/bin/gem
+ # /usr/bin/irb, /usr/bin/ri and man (1) ruby
+ sudo update-alternatives --config ruby
+ sudo update-alternatives --config gem
+
+ # now try
+ ruby --version
+</code></pre>
+
+<h3>
+<a name="redhatcentos" class="anchor" href="#redhatcentos"><span class="octicon octicon-link"></span></a>RedHat/CentOS</h3>
+
+<p><a href="https://gist.github.com/trevorrowe/1870314">https://gist.github.com/trevorrowe/1870314</a></p>
+
+<pre><code>sudo yum install -y gcc make \
+libxml2 libxml2-devel libxslt libxslt-devel \
+rubygems ruby-devel
+
+sudo gem install nokogiri -- --with-xml2-lib=/usr/local/lib \
+--with-xml2-include=/usr/local/include/libxml2 \
+--with-xslt-lib=/usr/local/lib \
+--with-xslt-include=/usr/local/include
+
+sudo gem install aws-sdk --no-ri --no-rdoc
+</code></pre>
+
+<h2>
+<a name="op5-appliance-centos" class="anchor" href="#op5-appliance-centos"><span class="octicon octicon-link"></span></a>OP5 Appliance (CentOS)</h2>
+
+<p>Pre-requisites already in place.</p>
+
+<h1>
+<a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h1>
+
+<h2>
+<a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Examples</h2>
+
+<ul>
+<li>Check an ELB (Elastic Load Balancer) for the number of healthy hosts. </li>
+</ul><pre><code>./check_cloudwatch.rb --instance="&lt;INSTANCE_NAME&gt;" --namespace="AWS/ELB" --metric="HealthyHostCount" --window=120 --period=60 --critical=:1+ --warning=:2+
+OK - Metric: HealthyHostCount, Last Average: 2.0 Count (2014-06-14 13:34:00 UTC)
+|Average=2.0,Minimum=2.0,Maximum=2.0,Sum=240.0
+</code></pre>
+
+<ul>
+<li>Check an ELB for the total number of ok requests over the last 5 minutes, warning when the number of requests equal or exceed 10 requests, critical at 15</li>
+</ul><pre><code>./check_cloudwatch.rb -i &lt;INSTANCE_NAME&gt; --window=3600 --metric=HTTPCode_Backend_2XX --window=300 --period=300 --critical=15 --warning=10 --statistics="Sum"
+</code></pre>
+
+<h2>
+<a name="thresholds" class="anchor" href="#thresholds"><span class="octicon octicon-link"></span></a>Thresholds</h2>
+
+<ul>
+<li>--warning={@}{+}, -w {@}{+}</li>
+<li>--critical={@}{+}, -c {@}{+}</li>
+</ul><p>The threshold parameter can be a single value or a range, and can handle decimal values.</p>
+
+<ul>
+<li>A threshold can be checked to be within a range, or outside a range.</li>
+<li>To alert when a value is outside a range, use the prefix "@".</li>
+</ul><p>The thresholds can be "soft" or "hard", meaning that ha hard threshold will include the parameter value (by comparing &gt;= or &lt;=). A soft threshold means that the check will not trigger when the checked value is equal to the threshold value (by comparing &gt; or &lt;).</p>
+
+<p>A soft threshold is selected by suffixing "+" to the threshold.</p>
+
+<p>Examples of valid thresholds are:</p>
+
+<p>1, 1.0, 1:+, :1.5, 0:1000, <a href="https://github.com/1" class="user-mention">@1</a>:100</p>
+
+<ul>
+<li>"-c 75"    will trigger when the value is equal to or larger than 75</li>
+<li>"-c 75+"   will trigger when the value is larger than 75</li>
+<li>"-c 0:1"   will trigger when the value is equal to or larger than 0 and equal to or less than 1 </li>
+<li>"-c 0:1+"  will trigger when the value is larger than 0 and less than 1</li>
+<li>"-c <a href="https://github.com/0" class="user-mention">@0</a>:1+"  will trigger when the value is outside the soft range</li>
+</ul><h2>
+<a name="listing-metrics" class="anchor" href="#listing-metrics"><span class="octicon octicon-link"></span></a>Listing metrics</h2>
+
+<p>You can list available metrics for your instance, your load balancer, etc, by using the --list-metrics parameter.</p>
+
+<p>./check_cloudwatch.rb --namespace="AWS/EC2" -i  --list-metrics</p>
+
+<h2>
+<a name="statistics-window-and-statistics-period" class="anchor" href="#statistics-window-and-statistics-period"><span class="octicon octicon-link"></span></a>Statistics window, and statistics period</h2>
+
+<p>The collection of AWS metrics is not done every minute. For example CPUUtilization is collected every 5 minutes. If you are asking for a window of 60 seconds and a period of 60 seconds, it is very likely that Cloudwatch will return an empty result set since there is no data to be presented for that period. This is a feature of the AWS Cloudwatch.</p>
+
+<p>The workaround for this is to ask for a longer period, say 10 minutes or longer, to make sure you will get at least one metric in your result set.</p>
+
+<p>./check_cloudwatch.rb --namespace="AWS/EC2" -i  --metric="CPUUtilization" --window=600 --period=60</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Nagios-cloudwatch maintained by <a href="https://github.com/maglub">maglub</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
