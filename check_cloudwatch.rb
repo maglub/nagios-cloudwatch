@@ -103,9 +103,11 @@ optWindow         = nil
 thresholdCritical = nil
 thresholdWarning  = nil
 optListMetrics    = false
+optListInstances  = false
 
 $debug    = false
 $verbose  = false
+
 
 #============================================
 # Functions
@@ -142,6 +144,7 @@ Usage: #{$0}
   --secret_key=ACCESS_KEY, -S ACCESS_KEY:      Use secret access key
   --instance, -i:                          Instance id or Load balancer name
   --list-metrics                           List available metrics (should be used together with -i)
+  --list-instances                         List EC2 instances
   --metric=<metric>                        Metric to report
   --namespace=<namespace>                  Set the namespace
   --ec2
@@ -233,6 +236,43 @@ def listMetrics(namespace, instance_id)
       puts ";#{metric[:metric_name]}"
     end
     
+  end
+end
+
+#-------------------------------------------------------------------
+# listEC2Instances
+#-------------------------------------------------------------------
+def listEC2Instances(noMonitoringTag)
+  $stderr.puts "* Entering: #{thisMethod()}" if $debug
+
+  aws_api = AWS::EC2.new()
+  
+  response = aws_api.client.describe_instances
+  instances = response[:reservation_set]
+  
+  #--- loop through all instances
+  instances.each do |instance|
+    curInstance = instance[:instances_set][0]
+  
+    instanceName     = "" 
+    noMonitoring     = "" 
+    instanceId       = curInstance[:instance_id]
+    privateIpAddress = curInstance[:private_ip_address]
+    availabilityZone = curInstance[:placement][:availability_zone]
+  
+    curInstance[:tag_set].each do | item |
+      case item[:key]
+        when 'Name'
+          instanceName = item[:value]
+        when noMonitoringTag
+          noMonitoring = item[:value].nil? ? "" : item[:value]
+      end
+    end
+  
+    printf "Name: %-20s Id: %-14s privateIp: %-18s State: Zone: %s\n", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
+#    puts "Name: #{instanceName} Id: #{instanceId} privateIp: #{privateIpAddress} State: #{curInstance[:instance_state][:name]} Zone: #{availabilityZone}"
+#      noMonitoring + ";"
+
   end
 end
 
@@ -378,6 +418,7 @@ opts.set_options(
   [ "--instance", "-i", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--secret_key", "-s", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--list-metrics", "-l", GetoptLong::NO_ARGUMENT],
+  [ "--list-instances", GetoptLong::NO_ARGUMENT],
   [ "--namespace", "-N", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--ec2", GetoptLong::NO_ARGUMENT],
   [ "--elb", GetoptLong::NO_ARGUMENT],
@@ -416,6 +457,8 @@ opts.each { |opt,arg|
       namespace         = AWS_NAMESPACE_EC2
     when '--elb'
       namespace         = AWS_NAMESPACE_ELB
+    when '--list-instances'
+      optListInstances  = true
     when '--list-metrics'
       optListMetrics    = true
     when '--window'
@@ -499,6 +542,11 @@ AWS.config(:secret_access_key => secretKeyOverride) unless secretKeyOverride.to_
 #============================================
 
 
+#--- list instances
+if (optListInstances)
+  listEC2Instances("")
+  exit 0
+end
 #--- list metrics
 if (optListMetrics)
   listMetrics(namespace, instance_id)
