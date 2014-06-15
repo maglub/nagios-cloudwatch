@@ -56,6 +56,9 @@ aws:
 ## Ruby
 ### Ubuntu 12.04 LTS
 
+If your installation come with ruby 1.8, you might have to start the script with `/usr/bin/ruby1.9.1 ./check_cloudwatch.rb`, unless you follow the second step on how to make ruby1.9.1 default in your installation.
+
+
 ````
 sudo apt-get install -y ruby1.9.1 ruby1.9.1-dev \
      rubygems1.9.1 irb1.9.1 ri1.9.1 rdoc1.9.1 \
