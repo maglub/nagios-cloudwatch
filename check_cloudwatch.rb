@@ -610,7 +610,7 @@ end
 retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
 
 
-puts "#{retCode[:msg]} - Metric: #{metric}, Last Value: #{reportValue} Unit: #{output[:unit]} (#{output[:timestamp]})"
+puts "#{retCode[:msg]} - Id: #{instance_id} Metric: #{metric}, Last Value: #{reportValue} Unit: #{output[:unit]} (#{output[:timestamp]})"
 
 #--- output nagios perfdata format
 print "|"
