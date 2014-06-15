@@ -110,9 +110,31 @@ $verbose  = false
 #============================================
 # Functions
 #============================================
+#-------------------------------------------------------------------
+# usageShort
+#-------------------------------------------------------------------
+def usageShort
+
+  puts <<EOT
+  
+  Usage: #{$0} --instance=<instance id|name> --metric=<metric>
+
+  Options:  [-A <access key>] [-S <secret key>][-h] [-C <pathToConfig>] [-r <region>] [--list-metrics] [--namespace=<AWS namespace>]
+            [--window=<window in seconds>] [--period=<period in seconds>] [--statistics="Statistic1,Statistic2,..."] [--verbose | -v] [--debug]
+            [-w <range> | --warning=<range>] [-c <range> | --critical=<range>]
+
+  Simplify your use of this command by keeping your credentials in config.yml. For full help, use option --help
+
+EOT
+end
+
+
+#-------------------------------------------------------------------
+# usage
+#-------------------------------------------------------------------
 def usage
   puts <<EOT
-Usage: #{$0} [-v]
+Usage: #{$0}
   --help, -h:                              This Help
   --config, -C:                            Use config file (default ../etc/config.yml)
   --region=region, -r region:              Connect to region (i.e us-west-1, us-west-2)
@@ -124,7 +146,7 @@ Usage: #{$0} [-v]
   --namespace=<namespace>                  Set the namespace
   --window=<seconds>:                      Time in seconds for the number of seconds back in time to fetch statistics
   --period=<seconds>:                      Time in seconds for the bin-size of the statistics (multiple of 60 seconds, but for practical reasons should be the same as --window)
-  --statistics:                            Statistics to gather, default "Average,Minimum,Maximum". Can also include Sum and Count
+  --statistics:                            Statistics to gather, default "Average,Minimum,Maximum". Can also include Sum and Count. The first one can be checked against thresholds.
   --verbose,-v:                            Show some more output on stderr on what is going on
   --debug:                                 Show a lot more output on stderr on what is going on
   
@@ -347,7 +369,8 @@ end
 
 opts = GetoptLong.new
 opts.set_options(
-  [ "--help", "-h", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--help-short", "-h", GetoptLong::NO_ARGUMENT],
+  [ "--help", GetoptLong::NO_ARGUMENT],
   [ "--region", "-r", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--access_key", "-a", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--instance", "-i", GetoptLong::OPTIONAL_ARGUMENT],
@@ -369,6 +392,9 @@ opts.each { |opt,arg|
   case opt
     when '--help'
       usage
+      exit 0
+    when '--help-short'
+      usageShort
       exit 0
     when '--config'
       configFile        = arg 
@@ -457,7 +483,6 @@ AWS.config(:region => regionOverride) unless regionOverride.to_s.empty?
 AWS.config(:access_key_id => accessKeyOverride) unless accessKeyOverride.to_s.empty?
 #--- if --secret was used
 AWS.config(:secret_access_key => secretKeyOverride) unless secretKeyOverride.to_s.empty?
-#AWS.config(:namespace => secretKeyOverride) unless namespaceOverride.to_s.empty?
 
 #============================================
 #============================================
@@ -511,21 +536,25 @@ else
 end
 
 #--- check the thresholds
+reportValue=0
+
 case statistics[0]
 when 'Average'
-  retCode=checkThresholds(output[:average], thresholdWarning, thresholdCritical)
+  reportValue = output[:average]
 when 'Minimum'
-  retCode=checkThresholds(output[:minimum], thresholdWarning, thresholdCritical)
+  reportValue = output[:minimum]
 when 'Maximum'
-  retCode=checkThresholds(output[:maximum], thresholdWarning, thresholdCritical)
+  reportValue = output[:maximum]
 when 'Count'
-  retCode=checkThresholds(output[:count], thresholdWarning, thresholdCritical)
+  reportValue = output[:count]
 when 'Sum'
-  retCode=checkThresholds(output[:sum], thresholdWarning, thresholdCritical)
+  reportValue = output[:sum]
 end
 
+retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
 
-puts "#{retCode[:msg]} - Metric: #{metric}, Last Average: #{output[:average]} #{output[:unit]} (#{output[:timestamp]})"
+
+puts "#{retCode[:msg]} - Metric: #{metric}, Last Value: #{reportValue} Unit: #{output[:unit]} (#{output[:timestamp]})"
 
 #--- output nagios perfdata format
 print "|"
