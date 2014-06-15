@@ -144,6 +144,8 @@ Usage: #{$0}
   --list-metrics                           List available metrics (should be used together with -i)
   --metric=<metric>                        Metric to report
   --namespace=<namespace>                  Set the namespace
+  --ec2
+  --elb
   --window=<seconds>:                      Time in seconds for the number of seconds back in time to fetch statistics
   --period=<seconds>:                      Time in seconds for the bin-size of the statistics (multiple of 60 seconds, but for practical reasons should be the same as --window)
   --statistics:                            Statistics to gather, default "Average,Minimum,Maximum". Can also include Sum and Count. The first one can be checked against thresholds.
@@ -377,6 +379,8 @@ opts.set_options(
   [ "--secret_key", "-s", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--list-metrics", "-l", GetoptLong::NO_ARGUMENT],
   [ "--namespace", "-N", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--ec2", GetoptLong::NO_ARGUMENT],
+  [ "--elb", GetoptLong::NO_ARGUMENT],
   [ "--metric", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--window", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--period", GetoptLong::OPTIONAL_ARGUMENT],
@@ -407,7 +411,11 @@ opts.each { |opt,arg|
     when '--instance'
       instance_id       = arg
     when '--namespace'
-      namespace=arg
+      namespace         = arg
+    when '--ec2'
+      namespace         = AWS_NAMESPACE_EC2
+    when '--elb'
+      namespace         = AWS_NAMESPACE_ELB
     when '--list-metrics'
       optListMetrics    = true
     when '--window'
