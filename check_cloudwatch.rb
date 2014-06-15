@@ -618,7 +618,7 @@ print "|"
 loopCount=0
 statistics.each do |statistic|
   if (loopCount > 0)
-    print ","
+    print " "
   end
 
   case statistic
