@@ -104,10 +104,13 @@ thresholdCritical = nil
 thresholdWarning  = nil
 optListMetrics    = false
 optListInstances  = false
+#--- optNoRunCheck -> false => check if the instance is running, before fetching metrics
+optNoRunCheck     = true
+
+retCode = {:value => 0}
 
 $debug    = false
 $verbose  = false
-
 
 #============================================
 # Functions
@@ -147,6 +150,7 @@ Usage: #{$0}
   --list-instances                         List EC2 instances
   --metric=<metric>                        Metric to report
   --namespace=<namespace>                  Set the namespace
+  --no-run-check                           Do not check if an instance is running before fetching metrics (speeds up the check by ca 2 seconds)
   --ec2
   --elb
   --window=<seconds>:                      Time in seconds for the number of seconds back in time to fetch statistics
@@ -270,9 +274,24 @@ def listEC2Instances(noMonitoringTag)
     end
   
     printf "Name: %-20s Id: %-14s privateIp: %-18s State: Zone: %s\n", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
-#    puts "Name: #{instanceName} Id: #{instanceId} privateIp: #{privateIpAddress} State: #{curInstance[:instance_state][:name]} Zone: #{availabilityZone}"
-#      noMonitoring + ";"
 
+  end
+end
+
+def EC2InstanceRunning(instanceId)
+  $stderr.puts "* Entering: #{thisMethod()}" if $debug 
+  $stderr.puts "  - Checking running state of #{instanceId}" if $debug
+
+  aws_api = AWS::EC2.new()
+   
+  #--- get the instance running state
+  response = aws_api.client.describe_instances({:instance_ids => [ instanceId ]})[:reservation_set][0][:instances_set][0][:instance_state][:name]
+#  $stderr.puts response if $debug
+  $stderr.puts "  - Done checking running state of #{instanceId} (#{response})" if $debug
+  if (response == "running")
+    return true
+  else
+    return false
   end
 end
 
@@ -419,6 +438,7 @@ opts.set_options(
   [ "--secret_key", "-s", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--list-metrics", "-l", GetoptLong::NO_ARGUMENT],
   [ "--list-instances", GetoptLong::NO_ARGUMENT],
+  [ "--no-run-check", GetoptLong::NO_ARGUMENT],
   [ "--namespace", "-N", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--ec2", GetoptLong::NO_ARGUMENT],
   [ "--elb", GetoptLong::NO_ARGUMENT],
@@ -479,6 +499,8 @@ opts.each { |opt,arg|
       thresholdWarning  = parseThreshold(arg)
     when '--statistics'
       statistics        = arg.split(/,/)
+    when '--no-run-check'
+      optNoRunCheck = true
   end
 }
 
@@ -553,90 +575,95 @@ if (optListMetrics)
   exit 0
 end
 
-$stderr.puts "* Creating AWS handle" if $verbose
+if ( (optNoRunCheck || EC2InstanceRunning(instance_id)) || namespace != AWS_NAMESPACE_EC2 )
 
-begin                                                                                                                                                                
-  aws_api = AWS::CloudWatch.new()
-rescue Exception => e                                                                                                                                                
-  puts "Error occured while trying to connect to AWS Endpoint: " + e.to_s                                                                                                 
-  exit NAGIOS_CODE_CRITICAL                                                                                                                                          
-end                                                                                                                                                                  
-
-$stderr.puts  "* Gathering metrics" if $verbose
-$stderr.puts "  - Namespace: #{namespace} Dimensions: #{dimensions} Metric: #{metric} Window: #{statisticsWindow} Period: #{statisticsPeriod}" if $debug
-
-metrics = aws_api.client.get_metric_statistics(
-  'metric_name' => metric,
-  'period'      => statisticsPeriod,
-  'start_time'  => (Time.now() - statisticsWindow).iso8601,
-  'end_time'    => Time.now().iso8601,
-  'statistics'  => statistics, #--- should normally be "Average", unless you want to sum up 
-  'namespace'   => namespace,
-  'dimensions'  => dimensions
-)
-
-#--- if the metrics need to be sorted
-
-$stderr.puts "  - Number of elements #{metrics[:datapoints].count}" if $verbose
-
-pp metrics if $debug
-
-if (metrics[:datapoints].count == 0)
-  $stderr.puts "No results from CloudWatch (probably no activity)" if $verbose
-  output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => "", :unit => 0}
-elsif (metrics[:datapoints].count > 1)
-  sortedMetrics = metrics[:datapoints].sort_by{|hsh| hsh[:timestamp]}.reverse
-  output          = sortedMetrics[0]
+      $stderr.puts "* Creating AWS handle" if $verbose
+      
+      begin                                                                                                                                                                
+        aws_api = AWS::CloudWatch.new()
+      rescue Exception => e                                                                                                                                                
+        puts "Error occured while trying to connect to AWS Endpoint: " + e.to_s                                                                                                 
+        exit NAGIOS_CODE_CRITICAL                                                                                                                                          
+      end                                                                                                                                                                  
+      
+      $stderr.puts  "* Gathering metrics" if $verbose
+      $stderr.puts "  - Namespace: #{namespace} Dimensions: #{dimensions} Metric: #{metric} Window: #{statisticsWindow} Period: #{statisticsPeriod}" if $debug
+      
+      metrics = aws_api.client.get_metric_statistics(
+        'metric_name' => metric,
+        'period'      => statisticsPeriod,
+        'start_time'  => (Time.now() - statisticsWindow).iso8601,
+        'end_time'    => Time.now().iso8601,
+        'statistics'  => statistics, #--- should normally be "Average", unless you want to sum up 
+        'namespace'   => namespace,
+        'dimensions'  => dimensions
+      )
+      
+      #--- if the metrics need to be sorted
+      
+      $stderr.puts "  - Number of elements #{metrics[:datapoints].count}" if $verbose
+      
+      pp metrics if $debug
+      
+      if (metrics[:datapoints].count == 0)
+        $stderr.puts "No results from CloudWatch (probably no activity)" if $verbose
+        output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => "", :unit => 0}
+      elsif (metrics[:datapoints].count > 1)
+        sortedMetrics = metrics[:datapoints].sort_by{|hsh| hsh[:timestamp]}.reverse
+        output          = sortedMetrics[0]
+      else
+        output          = metrics[:datapoints][0]
+      end
+      
+      #--- get the value to check
+      reportValue=0
+      case statistics[0]
+      when 'Average'
+        reportValue = output[:average]
+      when 'Minimum'
+        reportValue = output[:minimum]
+      when 'Maximum'
+        reportValue = output[:maximum]
+      when 'Count'
+        reportValue = output[:count]
+      when 'Sum'
+        reportValue = output[:sum]
+      end
+      
+      #--- checking thresholds
+      retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
+      
+      printf "#{retCode[:msg]} - Id: #{instance_id} Metric: #{metric}, Last Value: %.6f Unit: #{output[:unit]} (#{output[:timestamp]})\n", reportValue
+      
+      #--- output nagios perfdata format
+      print "|"
+      
+      loopCount=0
+      statistics.each do |statistic|
+        if (loopCount > 0)
+          print " "
+        end
+      
+        case statistic
+        when "Average"
+            printf "#{statistic}=%.6f", output[:average]
+        when "Minimum"
+            printf "#{statistic}=%.6f", output[:minimum]
+        when "Maximum"
+            printf "#{statistic}=%.6f", output[:maximum]
+        when "Sum"
+            printf "#{statistic}=%.6f", output[:sum]
+        when "Count"
+            printf "#{statistic}=%.6f", output[:count]
+        end
+        
+        loopCount += 1
+      end  
+      puts #--- end of line
 else
-  output          = metrics[:datapoints][0]
-end
-
-#--- check the thresholds
-reportValue=0
-
-case statistics[0]
-when 'Average'
-  reportValue = output[:average]
-when 'Minimum'
-  reportValue = output[:minimum]
-when 'Maximum'
-  reportValue = output[:maximum]
-when 'Count'
-  reportValue = output[:count]
-when 'Sum'
-  reportValue = output[:sum]
-end
-
-retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
-
-
-puts "#{retCode[:msg]} - Id: #{instance_id} Metric: #{metric}, Last Value: #{reportValue} Unit: #{output[:unit]} (#{output[:timestamp]})"
-
-#--- output nagios perfdata format
-print "|"
-
-loopCount=0
-statistics.each do |statistic|
-  if (loopCount > 0)
-    print " "
-  end
-
-  case statistic
-  when "Average"
-      print "#{statistic}=#{output[:average]}"
-  when "Minimum"
-      print "#{statistic}=#{output[:minimum]}"
-  when "Maximum"
-      print "#{statistic}=#{output[:maximum]}"
-  when "Sum"
-      print "#{statistic}=#{output[:sum]}"
-  when "Count"
-      print "#{statistic}=#{output[:count]}"
-  end
-  
-  loopCount += 1
-end  
-puts #--- end of line
+  puts "OK - EC2 inctance #{instance_id} is not running."
+  retCode[:value] = 0
+end      
 
 $stderr.puts "* Ret: #{retCode[:value].to_s}" if $verbose
 exit retCode[:value]
