@@ -31,9 +31,11 @@ $stdout.sync = true
 #============================================
 # Predefined variables 
 #============================================
-AWS_NAMESPACE_EC2 = "AWS/EC2"
-AWS_NAMESPACE_RDS = "AWS/RBS"
-AWS_NAMESPACE_ELB = "AWS/ELB"
+AWS_NAMESPACE_EC2     = "AWS/EC2"
+AWS_NAMESPACE_RDS     = "AWS/RDS"
+AWS_NAMESPACE_ELB     = "AWS/ELB"
+AWS_NAMESPACE_BILLING = "AWS/Billing"
+AWS_NAMESPACE_DATA    = "AWS/Data"
 
 AWS_METRIC_ELB = "HealthyHostCount" #Default metric
 
@@ -99,6 +101,7 @@ statisticsWindow  = AWS_STATISTICS_WINDOW
 statisticsPeriod  = AWS_STATISTICS_PERIOD
 optPeriod         = nil
 optWindow         = nil
+optBilling        = nil
 
 thresholdCritical = nil
 thresholdWarning  = nil
@@ -111,6 +114,38 @@ retCode = {:value => 0}
 
 $debug    = false
 $verbose  = false
+
+#============================================
+# Parameter parsing
+#============================================
+
+opts = GetoptLong.new
+opts.set_options(
+  [ "--help-short", "-h", GetoptLong::NO_ARGUMENT],
+  [ "--help", GetoptLong::NO_ARGUMENT],
+  [ "--billing", GetoptLong::NO_ARGUMENT],
+  [ "--region", "-r", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--access_key", "-a", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--instance", "-i", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--secret_key", "-s", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--list-metrics", "-l", GetoptLong::NO_ARGUMENT],
+  [ "--list-instances", GetoptLong::NO_ARGUMENT],
+  [ "--no-run-check", GetoptLong::NO_ARGUMENT],
+  [ "--namespace", "-N", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--ec2", GetoptLong::NO_ARGUMENT],
+  [ "--elb", GetoptLong::NO_ARGUMENT],
+  [ "--rds", GetoptLong::NO_ARGUMENT],
+  [ "--metric", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--window", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--period", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--critical", "-c", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--warning", "-w", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--verbose", "-v", GetoptLong::NO_ARGUMENT],
+  [ "--debug", GetoptLong::NO_ARGUMENT],
+  [ "--statistics", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--config", "-C", GetoptLong::OPTIONAL_ARGUMENT]
+)
+
 
 #============================================
 # Functions
@@ -153,6 +188,7 @@ Usage: #{$0}
   --no-run-check                           Do not check if an instance is running before fetching metrics (speeds up the check by ca 2 seconds)
   --ec2
   --elb
+  --rds
   --window=<seconds>:                      Time in seconds for the number of seconds back in time to fetch statistics
   --period=<seconds>:                      Time in seconds for the bin-size of the statistics (multiple of 60 seconds, but for practical reasons should be the same as --window)
   --statistics:                            Statistics to gather, default "Average,Minimum,Maximum". Can also include Sum and Count. The first one can be checked against thresholds.
@@ -220,6 +256,8 @@ def listMetrics(namespace, instance_id)
       dimensionCriteria="DBInstanceIdentifier"
     when AWS_NAMESPACE_ELB
       dimensionCriteria="LoadBalancerName"
+    when AWS_NAMESPACE_BILLING
+      dimensionCriteria=""
     else
       return 0
   end
@@ -293,6 +331,78 @@ def EC2InstanceRunning(instanceId)
   else
     return false
   end
+end
+
+#-------------------------------------------------------------------
+# getCloudwatchStatistics
+#-------------------------------------------------------------------
+def getCloudwatchStatistics(namespace, metric, statistics, dimensions, window, period)
+  $stderr.puts "* Entering: #{thisMethod()}" if $debug 
+
+  begin
+    aws_api = AWS::CloudWatch.new()
+    params = {
+      :metric_name => metric,
+      :period      => period,
+      :start_time  => (Time.now() - window).iso8601,
+      :end_time    => Time.now().iso8601,
+      :statistics  => statistics, #--- should normally be "Average", unless you want to sum up 
+      :namespace   => namespace,
+      :dimensions  => dimensions     
+    }
+    
+    metrics = aws_api.client.get_metric_statistics( params  )
+
+    if metrics && metrics[:datapoints] && metrics[:datapoints][0] && metrics[:datapoints][0][:timestamp]
+      # Cloudwatch doesn't necessarily sort the values. Ensure that they are.
+      metrics[:datapoints].sort!{|a,b| a[:timestamp] <=> b[:timestamp]}
+    end
+    
+  rescue Exception => e
+    $stderr.puts "ERROR: Could not get cloudwatch stats: #{metric}"
+    $stderr.puts "  - parameters: #{params.inspect}" if $debug
+  end
+  
+  return metrics
+  
+end
+
+def awsGetBilling(billingType)
+  $stderr.puts "* Entering: #{thisMethod()}" if $debug 
+
+  #--- all billing is reported from us-east-1
+  AWS.config(:region=>'us-east-1')
+  
+  $stderr.puts "  - Billing type: #{billingType.inspect}" if $debug
+  case billingType
+    when 'all'
+      dimensions = [{:name=>"Currency", :value=>"USD"}]
+    when AWS_NAMESPACE_EC2
+      dimensions = [{:name=>"ServiceName", :value=>"AmazonEC2"}, {:name=>"Currency", :value=>"USD"}]
+    when AWS_NAMESPACE_RDS
+      dimensions = [{:name=>"ServiceName", :value=>"AmazonRDS"}, {:name=>"Currency", :value=>"USD"}]
+    when AWS_NAMESPACE_DATATRANSFER
+      dimensions = [{:name=>"ServiceName", :value=>"AWSDataTransfer"}, {:name=>"Currency", :value=>"USD"}]
+    when AWS_NAMESPACE_S3
+      dimensions = [{:name=>"ServiceName", :value=>"AWSDataS3"}, {:name=>"Currency", :value=>"USD"}]
+    else 
+      return nil
+  end
+  
+  $stderr.puts "  - dimensions: #{dimensions.inspect}" if $debug
+  
+  metrics = getCloudwatchStatistics("AWS/Billing", "EstimatedCharges", ["Maximum"], dimensions, 3600*24, 3600*24)
+
+  $stderr.puts "  - metrics: #{metrics.inspect}" if $debug
+
+  if (! metrics.nil?)
+    lastMetric = metrics[:datapoints][-1]
+    puts "Cost to day: #{lastMetric[:maximum]}"    
+  else
+    puts "Billing metrics not enabled."
+  end
+
+  return 0
 end
 
 #-------------------------------------------------------------------
@@ -424,35 +534,18 @@ def checkThresholds(checkValueStr, thresholdWarning, thresholdCritical)
   end
 end
   
+  
+#============================================
+#============================================
+#                   MAIN 
+#============================================
+#============================================
+
 #============================================
 # Parse options
 #============================================
 
-opts = GetoptLong.new
-opts.set_options(
-  [ "--help-short", "-h", GetoptLong::NO_ARGUMENT],
-  [ "--help", GetoptLong::NO_ARGUMENT],
-  [ "--region", "-r", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--access_key", "-a", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--instance", "-i", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--secret_key", "-s", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--list-metrics", "-l", GetoptLong::NO_ARGUMENT],
-  [ "--list-instances", GetoptLong::NO_ARGUMENT],
-  [ "--no-run-check", GetoptLong::NO_ARGUMENT],
-  [ "--namespace", "-N", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--ec2", GetoptLong::NO_ARGUMENT],
-  [ "--elb", GetoptLong::NO_ARGUMENT],
-  [ "--metric", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--window", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--period", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--critical", "-c", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--warning", "-w", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--verbose", "-v", GetoptLong::NO_ARGUMENT],
-  [ "--debug", GetoptLong::NO_ARGUMENT],
-  [ "--statistics", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--config", "-C", GetoptLong::OPTIONAL_ARGUMENT]
-)
-
+#--- go through options
 opts.each { |opt,arg|
   case opt
     when '--help'
@@ -477,6 +570,8 @@ opts.each { |opt,arg|
       namespace         = AWS_NAMESPACE_EC2
     when '--elb'
       namespace         = AWS_NAMESPACE_ELB
+    when '--rds'
+      namespace         = AWS_NAMESPACE_RDS
     when '--list-instances'
       optListInstances  = true
     when '--list-metrics'
@@ -501,8 +596,11 @@ opts.each { |opt,arg|
       statistics        = arg.split(/,/)
     when '--no-run-check'
       optNoRunCheck = true
+    when '--billing'
+      optBilling = true
   end
 }
+
 
 #--- minor quirks
 
@@ -557,12 +655,6 @@ AWS.config(:access_key_id => accessKeyOverride) unless accessKeyOverride.to_s.em
 #--- if --secret was used
 AWS.config(:secret_access_key => secretKeyOverride) unless secretKeyOverride.to_s.empty?
 
-#============================================
-#============================================
-#                   MAIN 
-#============================================
-#============================================
-
 
 #--- list instances
 if (optListInstances)
@@ -575,30 +667,18 @@ if (optListMetrics)
   exit 0
 end
 
+if (optBilling)
+  awsGetBilling(namespace)
+  exit 0
+end
+
 if ( (optNoRunCheck || EC2InstanceRunning(instance_id)) || namespace != AWS_NAMESPACE_EC2 )
 
-      $stderr.puts "* Creating AWS handle" if $verbose
-      
-      begin                                                                                                                                                                
-        aws_api = AWS::CloudWatch.new()
-      rescue Exception => e                                                                                                                                                
-        puts "Error occured while trying to connect to AWS Endpoint: " + e.to_s                                                                                                 
-        exit NAGIOS_CODE_CRITICAL                                                                                                                                          
-      end                                                                                                                                                                  
-      
       $stderr.puts  "* Gathering metrics" if $verbose
       $stderr.puts "  - Namespace: #{namespace} Dimensions: #{dimensions} Metric: #{metric} Window: #{statisticsWindow} Period: #{statisticsPeriod}" if $debug
-      
-      metrics = aws_api.client.get_metric_statistics(
-        'metric_name' => metric,
-        'period'      => statisticsPeriod,
-        'start_time'  => (Time.now() - statisticsWindow).iso8601,
-        'end_time'    => Time.now().iso8601,
-        'statistics'  => statistics, #--- should normally be "Average", unless you want to sum up 
-        'namespace'   => namespace,
-        'dimensions'  => dimensions
-      )
-      
+
+      metrics = getCloudwatchStatistics(namespace, metric, statistics, dimensions, statisticsWindow, statisticsPeriod)
+
       #--- if the metrics need to be sorted
       
       $stderr.puts "  - Number of elements #{metrics[:datapoints].count}" if $verbose
@@ -608,11 +688,8 @@ if ( (optNoRunCheck || EC2InstanceRunning(instance_id)) || namespace != AWS_NAME
       if (metrics[:datapoints].count == 0)
         $stderr.puts "No results from CloudWatch (probably no activity)" if $verbose
         output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => "", :unit => 0}
-      elsif (metrics[:datapoints].count > 1)
-        sortedMetrics = metrics[:datapoints].sort_by{|hsh| hsh[:timestamp]}.reverse
-        output          = sortedMetrics[0]
       else
-        output          = metrics[:datapoints][0]
+        output          = metrics[:datapoints][-1]
       end
       
       #--- get the value to check
