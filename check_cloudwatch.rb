@@ -535,6 +535,34 @@ def checkThresholds(checkValueStr, thresholdWarning, thresholdCritical)
 end
   
   
+def printPerfdata(statistics)
+  
+  print "|"
+  
+  loopCount=0
+  statistics.each do |statistic|
+    if (loopCount > 0)
+      print " "
+    end
+  
+    case statistic
+    when "Average"
+        printf "#{statistic}=%.6f", output[:average]
+    when "Minimum"
+        printf "#{statistic}=%.6f", output[:minimum]
+    when "Maximum"
+        printf "#{statistic}=%.6f", output[:maximum]
+    when "Sum"
+        printf "#{statistic}=%.6f", output[:sum]
+    when "Count"
+        printf "#{statistic}=%.6f", output[:count]
+    end
+  
+    loopCount += 1
+  end  
+  puts #--- end of line
+  
+end
 #============================================
 #============================================
 #                   MAIN 
@@ -679,17 +707,14 @@ if ( (optNoRunCheck || EC2InstanceRunning(instance_id)) || namespace != AWS_NAME
 
       metrics = getCloudwatchStatistics(namespace, metric, statistics, dimensions, statisticsWindow, statisticsPeriod)
 
-      #--- if the metrics need to be sorted
-      
       $stderr.puts "  - Number of elements #{metrics[:datapoints].count}" if $verbose
+      $stderr.puts "  - Metrics: #{metrics}" if $debug
       
-      pp metrics if $debug
-      
-      if (metrics[:datapoints].count == 0)
-        $stderr.puts "No results from CloudWatch (probably no activity)" if $verbose
-        output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => "", :unit => 0}
+      if (metrics[:datapoints].count > 0)
+        output = metrics[:datapoints][-1]
       else
-        output          = metrics[:datapoints][-1]
+        $stderr.puts "No data delivered from CloudWatch (probably no activity)" if $verbose
+        output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => "", :unit => 0}
       end
       
       #--- get the value to check
@@ -709,34 +734,37 @@ if ( (optNoRunCheck || EC2InstanceRunning(instance_id)) || namespace != AWS_NAME
       
       #--- checking thresholds
       retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
-      
+
+      #--- output the header message
       printf "#{retCode[:msg]} - Id: #{instance_id} Metric: #{metric}, Last Value: %.6f Unit: #{output[:unit]} (#{output[:timestamp]})\n", reportValue
-      
       #--- output nagios perfdata format
-      print "|"
+
+      printPerfdata(statistics)
       
-      loopCount=0
-      statistics.each do |statistic|
-        if (loopCount > 0)
-          print " "
-        end
-      
-        case statistic
-        when "Average"
-            printf "#{statistic}=%.6f", output[:average]
-        when "Minimum"
-            printf "#{statistic}=%.6f", output[:minimum]
-        when "Maximum"
-            printf "#{statistic}=%.6f", output[:maximum]
-        when "Sum"
-            printf "#{statistic}=%.6f", output[:sum]
-        when "Count"
-            printf "#{statistic}=%.6f", output[:count]
-        end
-        
-        loopCount += 1
-      end  
-      puts #--- end of line
+#      print "|"
+#      
+#      loopCount=0
+#      statistics.each do |statistic|
+#        if (loopCount > 0)
+#          print " "
+#        end
+#      
+#        case statistic
+#        when "Average"
+#            printf "#{statistic}=%.6f", output[:average]
+#        when "Minimum"
+#            printf "#{statistic}=%.6f", output[:minimum]
+#        when "Maximum"
+#            printf "#{statistic}=%.6f", output[:maximum]
+#        when "Sum"
+#            printf "#{statistic}=%.6f", output[:sum]
+#        when "Count"
+#            printf "#{statistic}=%.6f", output[:count]
+#        end
+#        
+#        loopCount += 1
+#      end  
+#      puts #--- end of line
 else
   puts "OK - EC2 inctance #{instance_id} is not running."
   retCode[:value] = 0
