@@ -79,7 +79,7 @@ git clone git@github.com:maglub/nagios-cloudwatch.git
 </code></pre>
 
 <h2>
-<a name="configyml" class="anchor" href="#configyml"><span class="octicon octicon-link"></span></a>config.yml</h2>
+<a name="configyml" class="anchor" href="#configyml"><span class="octicon octicon-link"></span></a>Configure</h2>
 
 <ul>
 <li>Create a read-only user in AWS and associate it with your environment</li>
@@ -102,6 +102,18 @@ git clone git@github.com:maglub/nagios-cloudwatch.git
   #======================
   #proxy_uri: http://user:passwd@IP:PORT
 
+</code></pre>
+
+<h2>
+<a name="configyml" class="anchor" href="#configyml"><span class="octicon octicon-link"></span></a>Run</h2>
+
+Here are a couple of examples on how to run the script:
+
+<pre><code>
+malu@KMG-Hotspot-3.local:/Users/malu/dev/nagios-cloudwatch $./check_cloudwatch.rb --ec2 --list-instances
+Name: vpn-v001ec2          Id: i-91f62199     privateIp: 192.168.99.6       State: Zone: running
+Name: kmg-test002ec2       Id: i-7ef62176     privateIp: 192.168.99.10      State: Zone: running
+Name: win-test003ec2       Id: i-9956e691     privateIp: 192.168.99.20      State: Zone: stopped
 </code></pre>
 
 <h2>
