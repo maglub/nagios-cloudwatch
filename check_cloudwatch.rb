@@ -31,11 +31,12 @@ $stdout.sync = true
 #============================================
 # Predefined variables 
 #============================================
-AWS_NAMESPACE_EC2     = "AWS/EC2"
-AWS_NAMESPACE_RDS     = "AWS/RDS"
-AWS_NAMESPACE_ELB     = "AWS/ELB"
-AWS_NAMESPACE_BILLING = "AWS/Billing"
-AWS_NAMESPACE_DATA    = "AWS/Data"
+AWS_NAMESPACE_EC2             = "AWS/EC2"
+AWS_NAMESPACE_RDS             = "AWS/RDS"
+AWS_NAMESPACE_ELB             = "AWS/ELB"
+AWS_NAMESPACE_BILLING         = "AWS/Billing"
+AWS_NAMESPACE_DATATRANSFER    = "AWS/Data"
+AWS_NAMESPACE_S3              = "AWS/S3"
 
 AWS_METRIC_ELB = "HealthyHostCount" #Default metric
 
@@ -82,6 +83,9 @@ NAGIOS_CODE_WARNING   = {:value => 1, :msg => "WARNING" }
 NAGIOS_CODE_CRITICAL  = {:value => 2, :msg => "CRITICAL" }
 NAGIOS_CODE_UNKNOWN   = {:value => 3, :msg => "UNKNOWN" }
 
+
+OUTPUT_ZERO           = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => "", :unit => 0}
+
 #--- the config file will be looked for in the same directory as this script
 #--- Use -C to point to another directory
 configDir   = File.expand_path(File.dirname(__FILE__) )
@@ -94,7 +98,8 @@ noMonitoringTag   = nil
                      
 instance_id       = nil
 
-namespace         = AWS_NAMESPACE_ELB
+#namespace         = AWS_NAMESPACE_ELB
+namespace         = ""
 metric            = AWS_METRIC_ELB
 statistics        = AWS_STATISTICS
 statisticsWindow  = AWS_STATISTICS_WINDOW
@@ -339,6 +344,8 @@ end
 def getCloudwatchStatistics(namespace, metric, statistics, dimensions, window, period)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug 
 
+  $stderr.puts "  - Namespace: #{namespace} Dimensions: #{dimensions} Metric: #{metric} Window: #{window} Period: #{period}" if $debug
+
   begin
     aws_api = AWS::CloudWatch.new()
     params = {
@@ -367,26 +374,29 @@ def getCloudwatchStatistics(namespace, metric, statistics, dimensions, window, p
   
 end
 
-def awsGetBilling(billingType)
+#-------------------------------------------------------------------
+# awsGetBilling
+#-------------------------------------------------------------------
+def awsGetBilling(namespace)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug 
 
   #--- all billing is reported from us-east-1
   AWS.config(:region=>'us-east-1')
   
-  $stderr.puts "  - Billing type: #{billingType.inspect}" if $debug
-  case billingType
+  $stderr.puts "  - Billing type: #{namespace.inspect}" if $debug
+  case namespace
     when 'all'
-      dimensions = [{:name=>"Currency", :value=>"USD"}]
+      dimensions = [{:name=>"Currency"    , :value=>"USD"}]
     when AWS_NAMESPACE_EC2
-      dimensions = [{:name=>"ServiceName", :value=>"AmazonEC2"}, {:name=>"Currency", :value=>"USD"}]
+      dimensions = [{:name=>"ServiceName" , :value=>"AmazonEC2"}      , {:name=>"Currency", :value=>"USD"}]
     when AWS_NAMESPACE_RDS
-      dimensions = [{:name=>"ServiceName", :value=>"AmazonRDS"}, {:name=>"Currency", :value=>"USD"}]
+      dimensions = [{:name=>"ServiceName" , :value=>"AmazonRDS"}      , {:name=>"Currency", :value=>"USD"}]
     when AWS_NAMESPACE_DATATRANSFER
-      dimensions = [{:name=>"ServiceName", :value=>"AWSDataTransfer"}, {:name=>"Currency", :value=>"USD"}]
+      dimensions = [{:name=>"ServiceName" , :value=>"AWSDataTransfer"}, {:name=>"Currency", :value=>"USD"}]
     when AWS_NAMESPACE_S3
-      dimensions = [{:name=>"ServiceName", :value=>"AWSDataS3"}, {:name=>"Currency", :value=>"USD"}]
+      dimensions = [{:name=>"ServiceName" , :value=>"AWSDataS3"}      , {:name=>"Currency", :value=>"USD"}]
     else 
-      return nil
+      dimensions = [{:name=>"Currency"    , :value=>"USD"}]
   end
   
   $stderr.puts "  - dimensions: #{dimensions.inspect}" if $debug
@@ -395,14 +405,7 @@ def awsGetBilling(billingType)
 
   $stderr.puts "  - metrics: #{metrics.inspect}" if $debug
 
-  if (! metrics.nil?)
-    lastMetric = metrics[:datapoints][-1]
-    puts "Cost to day: #{lastMetric[:maximum]}"    
-  else
-    puts "Billing metrics not enabled."
-  end
-
-  return 0
+  return metrics
 end
 
 #-------------------------------------------------------------------
@@ -535,7 +538,10 @@ def checkThresholds(checkValueStr, thresholdWarning, thresholdCritical)
 end
   
   
-def printPerfdata(statistics)
+#--------------------------------------------------------
+# printPerfdata
+#--------------------------------------------------------
+def printPerfdata(statistics, output)
   
   print "|"
   
@@ -562,6 +568,28 @@ def printPerfdata(statistics)
   end  
   puts #--- end of line
   
+end
+
+#--------------------------------------------------------
+# getCheckValue
+#--------------------------------------------------------
+def getCheckValue(statistics, output)
+  #--- get the value to check
+  reportValue=0
+  case statistics[0]
+  when 'Average'
+    reportValue = output[:average]
+  when 'Minimum'
+    reportValue = output[:minimum]
+  when 'Maximum'
+    reportValue = output[:maximum]
+  when 'Count'
+    reportValue = output[:count]
+  when 'Sum'
+    reportValue = output[:sum]
+  end
+
+  return reportValue
 end
 #============================================
 #============================================
@@ -696,75 +724,50 @@ if (optListMetrics)
 end
 
 if (optBilling)
-  awsGetBilling(namespace)
-  exit 0
+  metrics = awsGetBilling(namespace)
+
+  if ( metrics && metrics[:datapoints].count > 0)
+    lastMetric = metrics[:datapoints][-1]
+    puts "Cost to day: #{lastMetric[:maximum]}"    
+    $stderr.puts "  - lastMetric: #{lastMetric.inspect}"
+    retCode=checkThresholds(lastMetric[:maximum], thresholdWarning, thresholdCritical)
+    printf "#{retCode[:msg]} - Namespace: #{namespace} Metric: Cost, Last Value: $%.2f Unit: #{lastMetric[:unit]} (#{lastMetric[:timestamp]})\n", lastMetric[:maximum]
+    printPerfdata(["Maximum"], lastMetric)
+
+  else
+    puts "Billing metrics not enabled for #{namespace}."
+  end
+
+  exit retCode[:value]
 end
 
+#--- EC2-instances
 if ( (optNoRunCheck || EC2InstanceRunning(instance_id)) || namespace != AWS_NAMESPACE_EC2 )
 
-      $stderr.puts  "* Gathering metrics" if $verbose
-      $stderr.puts "  - Namespace: #{namespace} Dimensions: #{dimensions} Metric: #{metric} Window: #{statisticsWindow} Period: #{statisticsPeriod}" if $debug
+  metrics = getCloudwatchStatistics(namespace, metric, statistics, dimensions, statisticsWindow, statisticsPeriod)
 
-      metrics = getCloudwatchStatistics(namespace, metric, statistics, dimensions, statisticsWindow, statisticsPeriod)
+  $stderr.puts "  - Number of elements #{metrics[:datapoints].count}" if $verbose
+  $stderr.puts "  - Metrics: #{metrics}" if $debug
+  
+  if (metrics[:datapoints].count > 0)
+    output = metrics[:datapoints][-1]
+  else
+    $stderr.puts "No data delivered from CloudWatch (probably no activity)" if $verbose
+    output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => "", :unit => 0}
+  end
+  
 
-      $stderr.puts "  - Number of elements #{metrics[:datapoints].count}" if $verbose
-      $stderr.puts "  - Metrics: #{metrics}" if $debug
-      
-      if (metrics[:datapoints].count > 0)
-        output = metrics[:datapoints][-1]
-      else
-        $stderr.puts "No data delivered from CloudWatch (probably no activity)" if $verbose
-        output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => "", :unit => 0}
-      end
-      
-      #--- get the value to check
-      reportValue=0
-      case statistics[0]
-      when 'Average'
-        reportValue = output[:average]
-      when 'Minimum'
-        reportValue = output[:minimum]
-      when 'Maximum'
-        reportValue = output[:maximum]
-      when 'Count'
-        reportValue = output[:count]
-      when 'Sum'
-        reportValue = output[:sum]
-      end
-      
-      #--- checking thresholds
-      retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
+  reportValue = getCheckValue(statistics, output)
+  
+  #--- checking thresholds
+  retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
 
-      #--- output the header message
-      printf "#{retCode[:msg]} - Id: #{instance_id} Metric: #{metric}, Last Value: %.6f Unit: #{output[:unit]} (#{output[:timestamp]})\n", reportValue
-      #--- output nagios perfdata format
+  #--- output the header message
+  printf "#{retCode[:msg]} - Id: #{instance_id} Metric: #{metric}, Last Value: %.6f Unit: #{output[:unit]} (#{output[:timestamp]})\n", reportValue
+  #--- output nagios perfdata format
 
-      printPerfdata(statistics)
+  printPerfdata(statistics, output)
       
-#      print "|"
-#      
-#      loopCount=0
-#      statistics.each do |statistic|
-#        if (loopCount > 0)
-#          print " "
-#        end
-#      
-#        case statistic
-#        when "Average"
-#            printf "#{statistic}=%.6f", output[:average]
-#        when "Minimum"
-#            printf "#{statistic}=%.6f", output[:minimum]
-#        when "Maximum"
-#            printf "#{statistic}=%.6f", output[:maximum]
-#        when "Sum"
-#            printf "#{statistic}=%.6f", output[:sum]
-#        when "Count"
-#            printf "#{statistic}=%.6f", output[:count]
-#        end
-#        
-#        loopCount += 1
-#      end  
-#      puts #--- end of line
 else
   puts "OK - EC2 inctance #{instance_id} is not running."
   retCode[:value] = 0
