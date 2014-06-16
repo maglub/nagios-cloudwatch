@@ -116,6 +116,21 @@ Name: kmg-test002ec2       Id: i-7ef62176     privateIp: 192.168.99.10      Stat
 Name: win-test003ec2       Id: i-9956e691     privateIp: 192.168.99.20      State: Zone: stopped
 </code></pre>
 
+<pre><code>
+$ ./check_cloudwatch.rb --ec2 --instance=i-7ef62176 --list-metrics
+i-7ef62176;CPUUtilization
+i-7ef62176;StatusCheckFailed_System
+i-7ef62176;DiskWriteBytes
+i-7ef62176;NetworkIn
+i-7ef62176;DiskReadOps
+i-7ef62176;NetworkOut
+i-7ef62176;StatusCheckFailed_Instance
+i-7ef62176;DiskReadBytes
+i-7ef62176;DiskWriteOps
+i-7ef62176;StatusCheckFailed
+</code></pre>
+
+
 <h2>
 <a name="ruby" class="anchor" href="#ruby"><span class="octicon octicon-link"></span></a>Ruby</h2>
 
