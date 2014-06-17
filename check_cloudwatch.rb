@@ -73,6 +73,8 @@ AWS_METRIC_ELB = "HealthyHostCount" #Default metric
 #---     DiskReadBytes
 #---     StatusCheckFailed_System
 
+#--- Billing metrics -> https://console.aws.amazon.com/cloudwatch/home?region=us-east-1&#s=Alarms&alarmAction=ListBillingAlarms
+
 
 AWS_STATISTICS  = ["Average","Minimum","Maximum", "Sum"]
 AWS_STATISTICS_WINDOW = 300                    # in seconds
@@ -771,7 +773,6 @@ end
     $stderr.puts "No data delivered from CloudWatch (probably no activity)" if $verbose
     output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => Time.now(), :unit => 0}
     instanceRunning = EC2InstanceRunning(instance_id)
-    pp instanceRunning
   end
   
   if (instanceRunning)
