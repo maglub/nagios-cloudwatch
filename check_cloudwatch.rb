@@ -425,10 +425,15 @@ def parseThreshold(inputArg)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug
 
   #--- check for range
-  $stderr.puts "  - Parsing threshold #{inputArg}" if $debug
+  $stderr.puts "  - Parsing threshold #{inputArg.inspect}" if $debug
   arg = String.new( inputArg )
 
   values = {}
+
+  if (inputArg = "")
+    return values
+  end
+  
   softCheck = false
   values[:precision] = "hard"
   
