@@ -439,34 +439,34 @@ def parseThreshold(inputArg)
   
   if (arg =~ /^-?[0-9]+\.?[0-9]*$/)
     #--- only one value, range from 0 up to this value, check will be inside this range
-    values[:type] = "outside-range"
-    values[:floor] = (-1.0/0) # Infinity
-    values[:ceiling] = arg.to_f()
+    values[:type]     = "outside-range"
+    values[:floor]    = (-1.0/0) # Infinity
+    values[:ceiling]  = arg.to_f()
   elsif (arg =~ /^-?[0-9]+\.?[0-9]*:$/)
     #--- only one value, range from this value up to infinity
-    values[:type] = "inside-range"
-    values[:floor] = arg.gsub!( /:/, '' ).to_f()
-    values[:ceiling] = (+1.0/0.0)	# +Infinity
+    values[:type]     = "inside-range"
+    values[:floor]    = arg.gsub!( /:/, '' ).to_f()
+    values[:ceiling]  = (+1.0/0.0)	# +Infinity
   elsif (arg =~ /^:-?[0-9]+\.?[0-9]*$/)
     #--- only one value, range from negative infinity up to this value
     arg.gsub!( /~/, '' )
-    values[:type] = "inside-range"
-    values[:floor] = (-1.0/0.0)	# -Infinity
-    values[:ceiling] = arg.gsub!( /:/, '' ).to_f()
+    values[:type]     = "inside-range"
+    values[:floor]    = (-1.0/0.0)	# -Infinity
+    values[:ceiling]  = arg.gsub!( /:/, '' ).to_f()
   elsif (arg =~ /^-?[0-9]+\.?[0-9]*:-?[0-9]+\.?[0-9]*$/)
     #--- two values, range from first to second value, check will be inside this range
     values_str = arg.split( /:/ )
-    values[:type] = "inside-range"
-    values[:floor] = values_str[0].to_f()
-    values[:ceiling] = values_str[1].to_f()
+    values[:type]     = "inside-range"
+    values[:floor]    = values_str[0].to_f()
+    values[:ceiling]  = values_str[1].to_f()
   elsif (arg =~ /^@-?[0-9]+\.?[0-9]*:-?[0-9]+\.?[0-9]*$/)
     #--- two values, range from first to second value, check will be outside this range
     arg.gsub!( /@/, '' )
     values_str = arg.split( /:/ )
     #values_str.reverse!()
-    values[:type] = "outside-range"
-    values[:floor] = values_str[0].to_f()
-    values[:ceiling] = values_str[1].to_f()
+    values[:type]     = "outside-range"
+    values[:floor]    = values_str[0].to_f()
+    values[:ceiling]    = values_str[1].to_f()
   else
     $stderr.puts "  - Could not parse this value (#{inputArg})" if $debug
     exit 1
@@ -728,8 +728,7 @@ if (optBilling)
 
   if ( metrics && metrics[:datapoints].count > 0)
     lastMetric = metrics[:datapoints][-1]
-    puts "Cost to day: #{lastMetric[:maximum]}"    
-    $stderr.puts "  - lastMetric: #{lastMetric.inspect}"
+    $stderr.puts "  - lastMetric: #{lastMetric.inspect}" if $debug
     retCode=checkThresholds(lastMetric[:maximum], thresholdWarning, thresholdCritical)
     printf "#{retCode[:msg]} - Namespace: #{namespace} Metric: Cost, Last Value: $%.2f Unit: #{lastMetric[:unit]} (#{lastMetric[:timestamp]})\n", lastMetric[:maximum]
     printPerfdata(["Maximum"], lastMetric)
