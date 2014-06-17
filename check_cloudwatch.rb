@@ -758,37 +758,38 @@ if (optBilling)
 end
 
 #--- EC2-instances
-if ( (optNoRunCheck || EC2InstanceRunning(instance_id)) || namespace != AWS_NAMESPACE_EC2 )
-
   metrics = getCloudwatchStatistics(namespace, metric, statistics, dimensions, statisticsWindow, statisticsPeriod)
 
   $stderr.puts "  - Number of elements #{metrics[:datapoints].count}" if $verbose
   $stderr.puts "  - Metrics: #{metrics}" if $debug
   
+  instanceRunning=false
   if (metrics[:datapoints].count > 0)
     output = metrics[:datapoints][-1]
+    instanceRunning = true
   else
     $stderr.puts "No data delivered from CloudWatch (probably no activity)" if $verbose
-    output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => "", :unit => 0}
+    output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => Time.now(), :unit => 0}
+    instanceRunning = EC2InstanceRunning(instance_id)
+    pp instanceRunning
   end
   
-
-  reportValue = getCheckValue(statistics, output)
+  if (instanceRunning)
+    reportValue = getCheckValue(statistics, output)
+    
+    #--- checking thresholds
+    retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
   
-  #--- checking thresholds
-  retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
-
-  #--- output the header message
-  $stderr.puts "  - Timestamp: #{Time.at(output[:timestamp])}" if $debug
-  printf "#{retCode[:msg]} - Id: #{instance_id} #{metric}, Value: %.6f Unit: #{output[:unit]} (#{Time.at(output[:timestamp]).strftime("%Y-%m-%d %H:%M:%S %Z")})\n", reportValue
-  #--- output nagios perfdata format
-
-  printPerfdata(statistics, output)
-      
-else
-  puts "OK - EC2 inctance #{instance_id} is not running."
-  retCode[:value] = 0
-end      
+    #--- output the header message
+    $stderr.puts "  - Timestamp: #{Time.at(output[:timestamp])}" if $debug
+    printf "#{retCode[:msg]} - Id: #{instance_id} #{metric}, Value: %.6f Unit: #{output[:unit]} (#{Time.at(output[:timestamp]).strftime("%Y-%m-%d %H:%M:%S %Z")})\n", reportValue
+    #--- output nagios perfdata format
+  
+    printPerfdata(statistics, output)
+  else
+    puts "OK - EC2 inctance #{instance_id} is not running."
+    retCode[:value] = 0
+  end
 
 $stderr.puts "* Ret: #{retCode[:value].to_s}" if $verbose
 exit retCode[:value]
