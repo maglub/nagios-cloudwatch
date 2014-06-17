@@ -625,7 +625,10 @@ opts.each { |opt,arg|
         configFile        = arg 
       end
     when '--region'
-      regionOverride    = arg
+      if (!arg.nil? && arg != "")
+        regionOverride    = arg
+        $stderr.puts "region: #{regionOverride}"
+      end
     when '--access_key'
       accessKeyOverride = arg
     when '--secret_key'
