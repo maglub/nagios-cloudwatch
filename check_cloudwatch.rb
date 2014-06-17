@@ -625,7 +625,7 @@ opts.each { |opt,arg|
         configFile        = arg 
       end
     when '--region'
-      if (!arg.nil? && arg != "")
+      if (!arg.nil? && arg != "" && arg != "$")
         regionOverride    = arg
         $stderr.puts "region: #{regionOverride}"
       end
