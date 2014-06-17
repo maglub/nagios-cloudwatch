@@ -738,7 +738,16 @@ if (optBilling)
     lastMetric = metrics[:datapoints][-1]
     $stderr.puts "  - lastMetric: #{lastMetric.inspect}" if $debug
     retCode=checkThresholds(lastMetric[:maximum], thresholdWarning, thresholdCritical)
-    printf "#{retCode[:msg]} - Namespace: #{namespace} Metric: Cost, $%.2f Unit: #{lastMetric[:unit]} (#{Time.at(lastMetric[:timestamp]).strftime("%Y-%m-%d %H:%M:%S %Z")})\n", lastMetric[:maximum]
+    billingWarning = (!thresholdWarning.nil?) ? thresholdWarning[:ceiling] : ""
+    billingCritical = (!thresholdCritical.nil?) ? thresholdCritical[:ceiling] : ""
+
+    if (billingWarning == "" && billingCritical =="")
+      billingThresholds = ""
+    else
+      billingThresholds = "(w:#{billingWarning}/c:#{billingCritical})"
+    end
+    
+    printf "#{retCode[:msg]} - Namespace: #{namespace} Metric: Cost, $%.2f #{billingThresholds} Unit: #{lastMetric[:unit]} (#{Time.at(lastMetric[:timestamp]).strftime("%Y-%m-%d %H:%M:%S %Z")})\n", lastMetric[:maximum]
     printPerfdata(["Maximum"], lastMetric)
 
   else
