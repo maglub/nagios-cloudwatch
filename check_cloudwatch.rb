@@ -770,7 +770,8 @@ if ( (optNoRunCheck || EC2InstanceRunning(instance_id)) || namespace != AWS_NAME
   retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
 
   #--- output the header message
-  printf "#{retCode[:msg]} - Id: #{instance_id} #{metric}, Value: %.6f Unit: #{output[:unit]} (#{output[:timestamp]})\n", reportValue
+  $stderr.puts "Timestamp: #{Time.at(output[:timestamp])}" if $debug
+  printf "#{retCode[:msg]} - Id: #{instance_id} #{metric}, Value: %.6f Unit: #{output[:unit]} (#{Time.at(output[:timestamp])})\n", reportValue
   #--- output nagios perfdata format
 
   printPerfdata(statistics, output)
