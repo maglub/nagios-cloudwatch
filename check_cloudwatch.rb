@@ -621,7 +621,9 @@ opts.each { |opt,arg|
       usageShort
       exit 0
     when '--config'
-      configFile        = arg 
+      if (!arg.nil?)
+        configFile        = arg 
+      end
     when '--region'
       regionOverride    = arg
     when '--access_key'
