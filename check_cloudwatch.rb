@@ -771,7 +771,7 @@ if ( (optNoRunCheck || EC2InstanceRunning(instance_id)) || namespace != AWS_NAME
 
   #--- output the header message
   $stderr.puts "  - Timestamp: #{Time.at(output[:timestamp])}" if $debug
-  printf "#{retCode[:msg]} - Id: #{instance_id} #{metric}, Value: %.6f Unit: #{output[:unit]} (#{Time.at(output[:timestamp])})\n", reportValue
+  printf "#{retCode[:msg]} - Id: #{instance_id} #{metric}, Value: %.6f Unit: #{output[:unit]} (#{Time.at(output[:timestamp]).strftime("%Y-%m-%d %H:%M:%S %Z")})\n", reportValue
   #--- output nagios perfdata format
 
   printPerfdata(statistics, output)
