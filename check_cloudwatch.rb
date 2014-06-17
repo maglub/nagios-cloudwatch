@@ -321,6 +321,9 @@ def listEC2Instances(noMonitoringTag)
   end
 end
 
+#-------------------------------------------------------------------
+# EC2InstanceRunning
+#-------------------------------------------------------------------
 def EC2InstanceRunning(instanceId)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug 
   $stderr.puts "  - Checking running state of #{instanceId}" if $debug
@@ -767,7 +770,7 @@ if ( (optNoRunCheck || EC2InstanceRunning(instance_id)) || namespace != AWS_NAME
   retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
 
   #--- output the header message
-  printf "#{retCode[:msg]} - Id: #{instance_id} Metric: #{metric}, Last Value: %.6f Unit: #{output[:unit]} (#{output[:timestamp]})\n", reportValue
+  printf "#{retCode[:msg]} - Id: #{instance_id} #{metric}, Value: %.6f Unit: #{output[:unit]} (#{output[:timestamp]})\n", reportValue
   #--- output nagios perfdata format
 
   printPerfdata(statistics, output)
