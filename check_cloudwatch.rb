@@ -621,7 +621,7 @@ opts.each { |opt,arg|
       usageShort
       exit 0
     when '--config'
-      if (!arg.nil?)
+      if (!arg.nil? && arg != "")
         configFile        = arg 
       end
     when '--region'
