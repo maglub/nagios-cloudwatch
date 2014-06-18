@@ -1,145 +1,89 @@
+#
+# Window/Period should reflect the frequency your Nagios/OP5 installation
+# is checking the service, i.e. for a 5 minute polling interval, the Window should
+# be 600 (2 polling intervals), and the period should be 300, to get the correct
+# representation of perfdata. This is true for most metrics.
+#
+# For some of the checks, it is more important to get an alarm as quickly as possible,
+# and the quantity will not get lost due to the missing samples.
+#
+# To properly tweak the thresholds and the Window/Period for your environment, it is
+# important that you have a good understanding of at which frequency AWS is collecting the
+# data, and what this has for an effect when querying this data.
+#
+# For a metric which is sampled every 5 minutes, a request will return an empty result set
+# most of the time if queried with --window=60 and --period=60, since the AWS sample happened
+# up to 5 minutes ago.
+#
+# For metrics sampled with a 5 minute period, you should query for the last 10 minutes to
+# make sure to get at least one result, with a period of 5 minutes. In most of the queries
+# AWS will return 1 sample, but at times 2 samples. The check_cloudwatch.rb script will
+# select the newest sample available in the result set.
+#
+# Name							AWS Sample		Window/Period		Threshold			Statistic			Threshold
+#								period		
+# Latency						1 minute		600/300				hard limit (>=)		Average (default)	$ARG$ 	(value >= ARG)
+# HealthyHostCount				1 minute		120/60				soft range (<, >)	Average (default)	:$ARG$+ (value > minus Infinity and value <  ARG)
+# UnHealthyHostCount			1 minute		120/60				soft limit	(>)		Average (default)	$ARG$+ 	(value > ARG)
+# RequestCount					1 minute		600/300				hard limit (>=)		Sum					$ARG$ 	(value >= ARG)
+# BackendConnectionErrors		1 minute		120/60				hard limit (>=)		Sum					$ARG$ 	(value >= ARG)
+# HTTPCode_ELB_5XX				1 minute		600/300				hard limit (>=)		Sum					$ARG$ 	(value >= ARG)
+# HTTPCode_Backend_4XX			1 minute		600/300				hard limit (>=)		Sum					$ARG$ 	(value >= ARG)
+# HTTPCode_Backend_2XX			1 minute		600/300				hard limit (>=)		Sum					$ARG$ 	(value >= ARG)
+# HTTPCode_Backend_3XX			1 minute		600/300				hard limit (>=)		Sum					$ARG$ 	(value >= ARG)
+# HTTPCode_Backend_5XX			1 minute		600/300				hard limit (>=)		Sum					$ARG$ 	(value >= ARG)
+
+
+
 # command 'aws-cloudwatch-elb-Latency'
 define command{
     command_name                   aws-cloudwatch-elb-Latency
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=Latency --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
+    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=Latency --window=600 --period=300 -i $ARG1$ -w $ARG2$ -c $ARG3$
     }
-# command 'aws-cloudwatch-elb-HealthyHostCount'
+	
+# command 'aws-cloudwatch-elb-HealthyHostCount'(I.e. -w :2+ will warn when the number of healthy hosts goes below 2.0)
 define command{
     command_name                   aws-cloudwatch-elb-HealthyHostCount
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HealthyHostCount --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
+    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HealthyHostCount --window=120 --period=60 -i $ARG1$ -w :$ARG2$+ -c :$ARG3$+
+    }
+	
+# command 'aws-cloudwatch-elb-UnHealthyHostCount'
+define command{
+    command_name                   aws-cloudwatch-elb-UnHealthyHostCount
+    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=UnHealthyHostCount --window=120 --period=60 -i $ARG1$ -w $ARG2$+ -c $ARG3$+
     }
 # command 'aws-cloudwatch-elb-RequestCount'
 define command{
     command_name                   aws-cloudwatch-elb-RequestCount
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=RequestCount --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
+    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=RequestCount --statistic="Sum" --window=600 --period=300 -i $ARG1$ -w $ARG2$ -c $ARG3$
     }
 # command 'aws-cloudwatch-elb-BackendConnectionErrors'
 define command{
     command_name                   aws-cloudwatch-elb-BackendConnectionErrors
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=BackendConnectionErrors --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-UnHealthyHostCount'
-define command{
-    command_name                   aws-cloudwatch-elb-UnHealthyHostCount
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=UnHealthyHostCount --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
+    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=BackendConnectionErrors --statistic="Sum" --window=600 --period=300 -i $ARG1$ -w $ARG2$ -c $ARG3$
     }
 # command 'aws-cloudwatch-elb-HTTPCode_ELB_5XX'
 define command{
     command_name                   aws-cloudwatch-elb-HTTPCode_ELB_5XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_ELB_5XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
+    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_ELB_5XX --statistic="Sum" --window=600 --period=300 -i $ARG1$ -w $ARG2$ -c $ARG3$
     }
 # command 'aws-cloudwatch-elb-HTTPCode_Backend_4XX'
 define command{
     command_name                   aws-cloudwatch-elb-HTTPCode_Backend_4XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_4XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
+    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_4XX --statistic="Sum" --window=600 --period=300 -i $ARG1$ -w $ARG2$ -c $ARG3$
     }
 # command 'aws-cloudwatch-elb-HTTPCode_Backend_2XX'
 define command{
     command_name                   aws-cloudwatch-elb-HTTPCode_Backend_2XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_2XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
+    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_2XX --statistic="Sum" --window=600 --period=300 -i $ARG1$ -w $ARG2$ -c $ARG3$
     }
 # command 'aws-cloudwatch-elb-HTTPCode_Backend_3XX'
 define command{
     command_name                   aws-cloudwatch-elb-HTTPCode_Backend_3XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_3XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
+    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_3XX --statistic="Sum" --window=600 --period=300 -i $ARG1$ -w $ARG2$ -c $ARG3$
     }
 # command 'aws-cloudwatch-elb-HTTPCode_Backend_5XX'
 define command{
     command_name                   aws-cloudwatch-elb-HTTPCode_Backend_5XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_5XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-Latency'
-define command{
-    command_name                   aws-cloudwatch-elb-Latency
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=Latency --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-Latency'
-define command{
-    command_name                   aws-cloudwatch-elb-Latency
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=Latency --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HealthyHostCount'
-define command{
-    command_name                   aws-cloudwatch-elb-HealthyHostCount
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HealthyHostCount --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HealthyHostCount'
-define command{
-    command_name                   aws-cloudwatch-elb-HealthyHostCount
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HealthyHostCount --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-RequestCount'
-define command{
-    command_name                   aws-cloudwatch-elb-RequestCount
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=RequestCount --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-BackendConnectionErrors'
-define command{
-    command_name                   aws-cloudwatch-elb-BackendConnectionErrors
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=BackendConnectionErrors --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-BackendConnectionErrors'
-define command{
-    command_name                   aws-cloudwatch-elb-BackendConnectionErrors
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=BackendConnectionErrors --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-RequestCount'
-define command{
-    command_name                   aws-cloudwatch-elb-RequestCount
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=RequestCount --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-UnHealthyHostCount'
-define command{
-    command_name                   aws-cloudwatch-elb-UnHealthyHostCount
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=UnHealthyHostCount --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-UnHealthyHostCount'
-define command{
-    command_name                   aws-cloudwatch-elb-UnHealthyHostCount
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=UnHealthyHostCount --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HTTPCode_ELB_5XX'
-define command{
-    command_name                   aws-cloudwatch-elb-HTTPCode_ELB_5XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_ELB_5XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HTTPCode_Backend_4XX'
-define command{
-    command_name                   aws-cloudwatch-elb-HTTPCode_Backend_4XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_4XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HTTPCode_Backend_2XX'
-define command{
-    command_name                   aws-cloudwatch-elb-HTTPCode_Backend_2XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_2XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HTTPCode_Backend_3XX'
-define command{
-    command_name                   aws-cloudwatch-elb-HTTPCode_Backend_3XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_3XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HTTPCode_Backend_2XX'
-define command{
-    command_name                   aws-cloudwatch-elb-HTTPCode_Backend_2XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_2XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HTTPCode_Backend_4XX'
-define command{
-    command_name                   aws-cloudwatch-elb-HTTPCode_Backend_4XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_4XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HTTPCode_Backend_5XX'
-define command{
-    command_name                   aws-cloudwatch-elb-HTTPCode_Backend_5XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_5XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HTTPCode_Backend_5XX'
-define command{
-    command_name                   aws-cloudwatch-elb-HTTPCode_Backend_5XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_5XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
-    }
-# command 'aws-cloudwatch-elb-HTTPCode_Backend_3XX'
-define command{
-    command_name                   aws-cloudwatch-elb-HTTPCode_Backend_3XX
-    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_3XX --window=120 --period=60 -i $ARG1$ -c :$ARG2$+ -w :$ARG3$+
+    command_line                   $USER1$/custom/nagios-cloudwatch/check_cloudwatch.rb --elb --metric=HTTPCode_Backend_5XX --statistic="Sum" --window=600 --period=300 -i $ARG1$ -w $ARG2$ -c $ARG3$
     }
