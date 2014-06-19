@@ -612,7 +612,8 @@ end
 #============================================
 
 #--- go through options
-opts.each { |opt,arg|
+begin
+opts.each do |opt,arg|
   case opt
     when '--help'
       usage
@@ -670,7 +671,11 @@ opts.each { |opt,arg|
     when '--billing'
       optBilling = true
   end
-}
+end
+rescue Exception => e
+  usageShort
+  exit 1
+end
 
 
 #--- minor quirks
