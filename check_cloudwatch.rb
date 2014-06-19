@@ -324,6 +324,25 @@ def listEC2Instances(noMonitoringTag)
 end
 
 #-------------------------------------------------------------------
+# listEC2Instances
+#-------------------------------------------------------------------
+def listELBInstances(noMonitoringTag)
+  $stderr.puts "* Entering: #{thisMethod()}" if $debug
+
+  aws_api = AWS::ELB.new()
+  
+  response = aws_api.client.describe_load_balancers
+  instances = response[:load_balancer_descriptions]
+
+  #--- loop through all instances
+  instances.each do |instance|
+
+    puts "#{instance[:load_balancer_name]}"
+  end
+end
+
+
+#-------------------------------------------------------------------
 # EC2InstanceRunning
 #-------------------------------------------------------------------
 def EC2InstanceRunning(instanceId)
@@ -732,9 +751,16 @@ AWS.config(:access_key_id => accessKeyOverride) unless accessKeyOverride.to_s.em
 AWS.config(:secret_access_key => secretKeyOverride) unless secretKeyOverride.to_s.empty?
 
 
-#--- list instances
+#--- list instances (--list-instances)
 if (optListInstances)
-  listEC2Instances("")
+  case namespace
+  when AWS_NAMESPACE_EC2
+    listEC2Instances("")
+  when AWS_NAMESPACE_ELB
+    listELBInstances("")
+  else
+    puts "Sorry, listing of namespace #{namespace} is not yet implemented"
+  end
   exit 0
 end
 #--- list metrics
