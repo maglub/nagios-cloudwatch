@@ -40,7 +40,7 @@ AWS_NAMESPACE_S3              = "AWS/S3"
 
 AWS_METRIC_ELB = "HealthyHostCount" #Default metric
 
-
+DEFAULT_ACTION = "list"
 #--- Reference for API Class: AWS::CloudWatch::Metric
 #---  http://docs.aws.amazon.com/AWSRubySDK/latest/AWS/CloudWatch/Metric.html#statistics-instance_method
 #--- Reference for API Class AWS::CloudWatch::Client
@@ -116,6 +116,8 @@ optListMetrics    = false
 optListInstances  = false
 #--- optNoRunCheck -> false => check if the instance is running, before fetching metrics
 optNoRunCheck     = true
+
+scriptAction      = "list-instances" #-- default action --list-instances
 
 retCode = {:value => 0}
 
@@ -318,7 +320,7 @@ def listEC2Instances(noMonitoringTag)
       end
     end
   
-    printf "Name: %-20s Id: %-14s privateIp: %-18s State: Zone: %s\n", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
+    printf "Name: %-20s Id: %-14s privateIp: %-18s State: %-10s Zone: %s\n", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
 
   end
 end
@@ -336,8 +338,14 @@ def listELBInstances(noMonitoringTag)
 
   #--- loop through all instances
   instances.each do |instance|
-
-    puts "#{instance[:load_balancer_name]}"
+    printf "Name: %-20s Zone: ", instance[:load_balancer_name]
+    numZones=0
+    instance[:availability_zones].each do | zone|
+      print ", " if (numZones > 0)
+      print zone
+      numZones+=1
+    end
+    puts
   end
 end
 
@@ -630,6 +638,14 @@ end
 # Parse options
 #============================================
 
+case ARGV.length
+when 0
+  usageShort
+  exit 0
+when 1
+  scriptAction = "list-instances"
+end
+  
 #--- go through options
 begin
 opts.each do |opt,arg|
@@ -664,9 +680,9 @@ opts.each do |opt,arg|
     when '--rds'
       namespace         = AWS_NAMESPACE_RDS
     when '--list-instances'
-      optListInstances  = true
+      scriptAction      = "list-instances"
     when '--list-metrics'
-      optListMetrics    = true
+      scriptAction      = "list-metrics"
     when '--window'
       statisticsWindow  = arg.to_i
       optWindow = statisticsWindow
@@ -675,6 +691,7 @@ opts.each do |opt,arg|
       optPeriod         = statisticsPeriod
     when '--metric'
       metric            = arg
+      scriptAction      = "get-metrics"
     when '--verbose'
       $verbose          = true
     when '--debug'
@@ -752,7 +769,7 @@ AWS.config(:secret_access_key => secretKeyOverride) unless secretKeyOverride.to_
 
 
 #--- list instances (--list-instances)
-if (optListInstances)
+if (scriptAction == "list-instances")
   case namespace
   when AWS_NAMESPACE_EC2
     listEC2Instances("")
@@ -764,7 +781,7 @@ if (optListInstances)
   exit 0
 end
 #--- list metrics
-if (optListMetrics)
+if (scriptAction == "list-metrics")
   listMetrics(namespace, instance_id)
   exit 0
 end
