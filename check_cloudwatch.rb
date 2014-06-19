@@ -462,7 +462,7 @@ def parseThreshold(inputArg)
 
   values = {}
 
-  if (inputArg == "")
+  if (inputArg == "" || inputArg == "+")
     return values
   end
   
