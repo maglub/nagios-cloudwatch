@@ -705,7 +705,7 @@ opts.each do |opt,arg|
     when '--no-run-check'
       optNoRunCheck = true
     when '--billing'
-      optBilling = true
+      scriptAction = "billing"
   end
 end
 rescue Exception => e
@@ -786,7 +786,7 @@ if (scriptAction == "list-metrics")
   exit 0
 end
 
-if (optBilling)
+if (scriptAction == "billing")
   metrics = awsGetBilling(namespace)
 
   if ( metrics && metrics[:datapoints].count > 0)
