@@ -845,6 +845,7 @@ end
     puts "OK - EC2 inctance #{instance_id} is not running."
     retCode[:value] = 0
   end
+  
 
 $stderr.puts "* Ret: #{retCode[:value].to_s}" if $verbose
 exit retCode[:value]
