@@ -825,7 +825,8 @@ end
   else
     $stderr.puts "No data delivered from CloudWatch (probably no activity)" if $verbose
     output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => Time.now(), :unit => 0}
-    instanceRunning = EC2InstanceRunning(instance_id)
+    instanceRunning = EC2InstanceRunning(instance_id) if (namespace == AWS_NAMESPACE_EC2)
+    instanceRunning = true if (namespace == AWS_NAMESPACE_ELB)
   end
   
   if (instanceRunning)
