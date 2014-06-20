@@ -144,6 +144,7 @@ opts.set_options(
   [ "--ec2", GetoptLong::NO_ARGUMENT],
   [ "--elb", GetoptLong::NO_ARGUMENT],
   [ "--rds", GetoptLong::NO_ARGUMENT],
+  [ "--s3", GetoptLong::NO_ARGUMENT],
   [ "--metric", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--window", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--period", GetoptLong::OPTIONAL_ARGUMENT],
@@ -152,6 +153,7 @@ opts.set_options(
   [ "--verbose", "-v", GetoptLong::NO_ARGUMENT],
   [ "--debug", GetoptLong::NO_ARGUMENT],
   [ "--statistics", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--powerstate", GetoptLong::NO_ARGUMENT],
   [ "--config", "-C", GetoptLong::OPTIONAL_ARGUMENT]
 )
 
@@ -267,6 +269,8 @@ def listMetrics(namespace, instance_id)
       dimensionCriteria="LoadBalancerName"
     when AWS_NAMESPACE_BILLING
       dimensionCriteria=""
+    when AWS_NAMESPACE_S3
+      dimensionCriteria="Name"
     else
       return 0
   end
@@ -679,6 +683,8 @@ opts.each do |opt,arg|
       namespace         = AWS_NAMESPACE_ELB
     when '--rds'
       namespace         = AWS_NAMESPACE_RDS
+    when '--s3'
+      namespace         = AWS_NAMESPACE_S3
     when '--list-instances'
       scriptAction      = "list-instances"
     when '--list-metrics'
@@ -706,6 +712,8 @@ opts.each do |opt,arg|
       optNoRunCheck = true
     when '--billing'
       scriptAction = "billing"
+    when '--powerstate'
+      scriptAction = "powerstate"
   end
 end
 rescue Exception => e
@@ -747,15 +755,12 @@ elsif namespace.eql?(AWS_NAMESPACE_RDS)
   dimensions = [{:name => "DBInstanceIdentifier", :value => instance_id}]
 elsif namespace.eql?(AWS_NAMESPACE_ELB)
   dimensions = [{:name => "LoadBalancerName", :value => instance_id}]
+elsif namespace.eql?(AWS_NAMESPACE_S3)
+  dimensions = [{:name => "LoadBalancerName", :value => instance_id}]
 end
 
 $stderr.puts "* Setting up dimensions to #{dimensions}" if $debug
 
-#============================================
-# Setup connection to AWS
-#============================================
-
-#pp config["aws"] if $debug
 
 $stderr.puts "* AWS Config" if $debug
 
@@ -780,10 +785,21 @@ if (scriptAction == "list-instances")
   end
   exit 0
 end
+
 #--- list metrics
 if (scriptAction == "list-metrics")
   listMetrics(namespace, instance_id)
   exit 0
+end
+
+if (scriptAction == "powerstate" && namespace == AWS_NAMESPACE_EC2)
+  instanceRunning = EC2InstanceRunning(instance_id)
+  checkValue = (instanceRunning) ? 1:0
+  retCode = checkThresholds(checkValue, thresholdWarning, thresholdCritical)
+
+  printf "#{retCode[:msg]} - Id: #{instance_id} Powerstate: %s Metric: (#{Time.now().strftime("%Y-%m-%d %H:%M:%S %Z")})\n", (checkValue == 0) ? "off" : "on"
+  exit retCode[:value]
+
 end
 
 if (scriptAction == "billing")
