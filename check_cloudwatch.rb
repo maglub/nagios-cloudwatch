@@ -25,7 +25,7 @@
 #       http://exchange.nagios.org/directory/Plugins/Operating-Systems/*-Virtual-Environments/Others/Check_AWS_CloudWatch_metrics/details
 #============================================
 
-%w[ rubygems getoptlong yaml aws-sdk pp ].each { |f| require f }
+%w[ rubygems getoptlong yaml aws-sdk pp time].each { |f| require f }
 $stdout.sync = true
 
 #============================================
@@ -134,9 +134,9 @@ opts.set_options(
   [ "--help", GetoptLong::NO_ARGUMENT],
   [ "--billing", GetoptLong::NO_ARGUMENT],
   [ "--region", "-r", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--access_key", "-a", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--access_key", "-A", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--instance", "-i", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--secret_key", "-s", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--secret_key", "-S", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--list-metrics", "-l", GetoptLong::NO_ARGUMENT],
   [ "--list-instances", GetoptLong::NO_ARGUMENT],
   [ "--no-run-check", GetoptLong::NO_ARGUMENT],
@@ -382,28 +382,31 @@ def getCloudwatchStatistics(namespace, metric, statistics, dimensions, window, p
 
   $stderr.puts "  - Namespace: #{namespace} Dimensions: #{dimensions} Metric: #{metric} Window: #{window} Period: #{period}" if $debug
 
+  params = {
+    :metric_name => metric,
+    :period      => period,
+    :start_time  => (Time.now() - window).iso8601,
+    :end_time    => Time.now().iso8601,
+    :statistics  => statistics, #--- should normally be "Average", unless you want to sum up 
+    :namespace   => namespace,
+    :dimensions  => dimensions     
+  }
+
+  
   begin
     aws_api = AWS::CloudWatch.new()
-    params = {
-      :metric_name => metric,
-      :period      => period,
-      :start_time  => (Time.now() - window).iso8601,
-      :end_time    => Time.now().iso8601,
-      :statistics  => statistics, #--- should normally be "Average", unless you want to sum up 
-      :namespace   => namespace,
-      :dimensions  => dimensions     
-    }
-    
-    metrics = aws_api.client.get_metric_statistics( params  )
 
-    if metrics && metrics[:datapoints] && metrics[:datapoints][0] && metrics[:datapoints][0][:timestamp]
-      # Cloudwatch doesn't necessarily sort the values. Ensure that they are.
-      metrics[:datapoints].sort!{|a,b| a[:timestamp] <=> b[:timestamp]}
-    end
-    
+    metrics = aws_api.client.get_metric_statistics( params  )
   rescue Exception => e
     $stderr.puts "ERROR: Could not get cloudwatch stats: #{metric}"
+    $stderr.puts "ERROR:   - #{e.to_s}"
     $stderr.puts "  - parameters: #{params.inspect}" if $debug
+    exit 1
+  end
+
+  if metrics && metrics[:datapoints] && metrics[:datapoints][0] && metrics[:datapoints][0][:timestamp]
+    # Cloudwatch doesn't necessarily sort the values. Ensure that they are.
+    metrics[:datapoints].sort!{|a,b| a[:timestamp] <=> b[:timestamp]}
   end
   
   return metrics
@@ -667,7 +670,7 @@ opts.each do |opt,arg|
     when '--region'
       if (!arg.nil? && arg != "" && arg != "$")
         regionOverride    = arg
-        $stderr.puts "region: #{regionOverride}"
+        $stderr.puts "region: #{regionOverride}" if $DEBUG
       end
     when '--access_key'
       accessKeyOverride = arg
