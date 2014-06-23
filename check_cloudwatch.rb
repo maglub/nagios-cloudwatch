@@ -281,7 +281,13 @@ def listMetrics(namespace, instance_id)
     dimensions = [{:value => instance_id, :name => dimensionCriteria }]
   end
 
-  metrics = aws_api.client.list_metrics({:namespace=> namespace, :dimensions =>dimensions}).data[:metrics]
+  begin
+    metrics = aws_api.client.list_metrics({:namespace=> namespace, :dimensions =>dimensions}).data[:metrics]
+  rescue Exception => e
+    $stderr.puts "ERROR:   - #{e.to_s}"
+    exit 1
+  end
+    
   metrics.each do | metric |
    puts "====================== " + metric[:metric_name] + " ================================" if $debug
     pp metric if $debug
@@ -302,7 +308,14 @@ def listEC2Instances(noMonitoringTag)
 
   aws_api = AWS::EC2.new()
   
-  response = aws_api.client.describe_instances
+  begin
+    response = aws_api.client.describe_instances
+  rescue Exception => e
+    $stderr.puts "ERROR:   - #{e.to_s}"
+    exit 1
+  end
+
+
   instances = response[:reservation_set]
   
   #--- loop through all instances
@@ -336,8 +349,14 @@ def listELBInstances(noMonitoringTag)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug
 
   aws_api = AWS::ELB.new()
-  
-  response = aws_api.client.describe_load_balancers
+
+  begin  
+    response = aws_api.client.describe_load_balancers
+  rescue Exception => e
+    $stderr.puts "ERROR:   - #{e.to_s}"
+    exit 1
+  end
+
   instances = response[:load_balancer_descriptions]
 
   #--- loop through all instances
@@ -364,7 +383,14 @@ def EC2InstanceRunning(instanceId)
   aws_api = AWS::EC2.new()
    
   #--- get the instance running state
-  response = aws_api.client.describe_instances({:instance_ids => [ instanceId ]})[:reservation_set][0][:instances_set][0][:instance_state][:name]
+  begin
+    response = aws_api.client.describe_instances({:instance_ids => [ instanceId ]})[:reservation_set][0][:instances_set][0][:instance_state][:name]
+  rescue Exception => e
+    $stderr.puts "ERROR:   - #{e.to_s}"
+    exit 1
+  end
+
+
 #  $stderr.puts response if $debug
   $stderr.puts "  - Done checking running state of #{instanceId} (#{response})" if $debug
   if (response == "running")
@@ -395,7 +421,6 @@ def getCloudwatchStatistics(namespace, metric, statistics, dimensions, window, p
   
   begin
     aws_api = AWS::CloudWatch.new()
-
     metrics = aws_api.client.get_metric_statistics( params  )
   rescue Exception => e
     $stderr.puts "ERROR: Could not get cloudwatch stats: #{metric}"
