@@ -1,3 +1,12 @@
+
+#Releases
+
+Currently the pace of development is very high. Any downloads of the "master" branch will be subject of rapid change.
+
+If you want a stable release, please download from the "stable" branch. The latest release can be found here:
+
+* https://github.com/maglub/nagios-cloudwatch/archive/stable.tar.gz
+
 #Description
 
 Nagios Cloudwatch is a set of scripts to help with the Nagios (and derivates) monitoring of Amazon Cloud resources.
