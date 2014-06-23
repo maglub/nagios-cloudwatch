@@ -212,6 +212,7 @@ Usage: #{$0}
   --rds
   --window=<seconds>:                      Time in seconds for the number of seconds back in time to fetch statistics
   --period=<seconds>:                      Time in seconds for the bin-size of the statistics (multiple of 60 seconds, but for practical reasons should be the same as --window)
+  --powerstate:                            Check powerstate of an ec2 instance 
   --statistics:                            Statistics to gather, default "Average,Minimum,Maximum". Can also include Sum and Count. The first one can be checked against thresholds.
   --verbose,-v:                            Show some more output on stderr on what is going on
   --debug:                                 Show a lot more output on stderr on what is going on
