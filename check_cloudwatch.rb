@@ -25,7 +25,7 @@
 #       http://exchange.nagios.org/directory/Plugins/Operating-Systems/*-Virtual-Environments/Others/Check_AWS_CloudWatch_metrics/details
 #============================================
 
-%w[ rubygems getoptlong yaml aws-sdk pp ].each { |f| require f }
+%w[ rubygems getoptlong yaml aws-sdk pp time].each { |f| require f }
 $stdout.sync = true
 
 #============================================
@@ -75,6 +75,8 @@ DEFAULT_ACTION = "list"
 
 #--- Billing metrics -> https://console.aws.amazon.com/cloudwatch/home?region=us-east-1&#s=Alarms&alarmAction=ListBillingAlarms
 
+#$logDir   = File.expand_path(File.dirname(__FILE__) + "/log" )
+#$logFile  = File.open( $logDir + "/monitor.log", 'a') 
 
 AWS_STATISTICS  = ["Average","Minimum","Maximum", "Sum"]
 AWS_STATISTICS_WINDOW = 300                    # in seconds
@@ -85,8 +87,11 @@ NAGIOS_CODE_WARNING   = {:value => 1, :msg => "WARNING" }
 NAGIOS_CODE_CRITICAL  = {:value => 2, :msg => "CRITICAL" }
 NAGIOS_CODE_UNKNOWN   = {:value => 3, :msg => "UNKNOWN" }
 
-
 OUTPUT_ZERO           = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => "", :unit => 0}
+
+DEBUG   = 2
+VERBOSE = 1
+NORMAL  = 0
 
 #--- the config file will be looked for in the same directory as this script
 #--- Use -C to point to another directory
@@ -121,22 +126,24 @@ scriptAction      = "list-instances" #-- default action --list-instances
 
 retCode = {:value => 0}
 
-$debug    = false
-$verbose  = false
+$debug        = false
+$verbose      = false
+$verboseLevel = NORMAL
 
 #============================================
 # Parameter parsing
 #============================================
 
+begin
 opts = GetoptLong.new
 opts.set_options(
   [ "--help-short", "-h", GetoptLong::NO_ARGUMENT],
   [ "--help", GetoptLong::NO_ARGUMENT],
   [ "--billing", GetoptLong::NO_ARGUMENT],
   [ "--region", "-r", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--access_key", "-a", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--access_key", "-A", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--instance", "-i", GetoptLong::OPTIONAL_ARGUMENT],
-  [ "--secret_key", "-s", GetoptLong::OPTIONAL_ARGUMENT],
+  [ "--secret_key", "-S", GetoptLong::OPTIONAL_ARGUMENT],
   [ "--list-metrics", "-l", GetoptLong::NO_ARGUMENT],
   [ "--list-instances", GetoptLong::NO_ARGUMENT],
   [ "--no-run-check", GetoptLong::NO_ARGUMENT],
@@ -156,7 +163,7 @@ opts.set_options(
   [ "--powerstate", GetoptLong::NO_ARGUMENT],
   [ "--config", "-C", GetoptLong::OPTIONAL_ARGUMENT]
 )
-
+end
 
 #============================================
 # Functions
@@ -184,6 +191,9 @@ end
 # usage
 #-------------------------------------------------------------------
 def usage
+  
+  usageShort()
+  
   puts <<EOT
 Usage: #{$0}
   --help, -h:                              This Help
@@ -252,11 +262,22 @@ EOT
 end
 
 #-------------------------------------------------------------------
+# logIt, helper method to print verbose/debug information
+#        to the screen and optionally to a log file
+#-------------------------------------------------------------------
+def logIt(message, *levelOptional)
+  level = (levelOptional[0].nil?) ? 0 : levelOptional[0]
+  $stderr.puts "#{message}" if level <= $verboseLevel
+  ts=Time.now().strftime("%Y-%m-%d %H:%M:%S %Z")
+  #$logFile.puts(Process.pid.to_s + ";" + ts + ";" + level.to_s + ";" + message) if ($writeToLogfile)
+end
+
+#-------------------------------------------------------------------
 # listMetrics
 #-------------------------------------------------------------------
 def listMetrics(namespace, instance_id)
 
-  $stderr.puts "* Entering: #{thisMethod()}" if $debug
+  logIt("* Entering: #{thisMethod()}", DEBUG)
 
   aws_api = AWS::CloudWatch.new()
 
@@ -281,7 +302,13 @@ def listMetrics(namespace, instance_id)
     dimensions = [{:value => instance_id, :name => dimensionCriteria }]
   end
 
-  metrics = aws_api.client.list_metrics({:namespace=> namespace, :dimensions =>dimensions}).data[:metrics]
+  begin
+    metrics = aws_api.client.list_metrics({:namespace=> namespace, :dimensions =>dimensions}).data[:metrics]
+  rescue Exception => e
+    logIt("ERROR:   - #{e.to_s}", NORMAL)
+    exit 1
+  end
+    
   metrics.each do | metric |
    puts "====================== " + metric[:metric_name] + " ================================" if $debug
     pp metric if $debug
@@ -302,7 +329,14 @@ def listEC2Instances(noMonitoringTag)
 
   aws_api = AWS::EC2.new()
   
-  response = aws_api.client.describe_instances
+  begin
+    response = aws_api.client.describe_instances
+  rescue Exception => e
+    $stderr.puts "ERROR:   - #{e.to_s}"
+    exit 1
+  end
+
+
   instances = response[:reservation_set]
   
   #--- loop through all instances
@@ -336,8 +370,14 @@ def listELBInstances(noMonitoringTag)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug
 
   aws_api = AWS::ELB.new()
-  
-  response = aws_api.client.describe_load_balancers
+
+  begin  
+    response = aws_api.client.describe_load_balancers
+  rescue Exception => e
+    $stderr.puts "ERROR:   - #{e.to_s}"
+    exit 1
+  end
+
   instances = response[:load_balancer_descriptions]
 
   #--- loop through all instances
@@ -364,7 +404,14 @@ def EC2InstanceRunning(instanceId)
   aws_api = AWS::EC2.new()
    
   #--- get the instance running state
-  response = aws_api.client.describe_instances({:instance_ids => [ instanceId ]})[:reservation_set][0][:instances_set][0][:instance_state][:name]
+  begin
+    response = aws_api.client.describe_instances({:instance_ids => [ instanceId ]})[:reservation_set][0][:instances_set][0][:instance_state][:name]
+  rescue Exception => e
+    $stderr.puts "ERROR:   - #{e.to_s}"
+    exit 1
+  end
+
+
 #  $stderr.puts response if $debug
   $stderr.puts "  - Done checking running state of #{instanceId} (#{response})" if $debug
   if (response == "running")
@@ -382,28 +429,30 @@ def getCloudwatchStatistics(namespace, metric, statistics, dimensions, window, p
 
   $stderr.puts "  - Namespace: #{namespace} Dimensions: #{dimensions} Metric: #{metric} Window: #{window} Period: #{period}" if $debug
 
+  params = {
+    :metric_name => metric,
+    :period      => period,
+    :start_time  => (Time.now() - window).iso8601,
+    :end_time    => Time.now().iso8601,
+    :statistics  => statistics, #--- should normally be "Average", unless you want to sum up 
+    :namespace   => namespace,
+    :dimensions  => dimensions     
+  }
+
+  
   begin
     aws_api = AWS::CloudWatch.new()
-    params = {
-      :metric_name => metric,
-      :period      => period,
-      :start_time  => (Time.now() - window).iso8601,
-      :end_time    => Time.now().iso8601,
-      :statistics  => statistics, #--- should normally be "Average", unless you want to sum up 
-      :namespace   => namespace,
-      :dimensions  => dimensions     
-    }
-    
     metrics = aws_api.client.get_metric_statistics( params  )
-
-    if metrics && metrics[:datapoints] && metrics[:datapoints][0] && metrics[:datapoints][0][:timestamp]
-      # Cloudwatch doesn't necessarily sort the values. Ensure that they are.
-      metrics[:datapoints].sort!{|a,b| a[:timestamp] <=> b[:timestamp]}
-    end
-    
   rescue Exception => e
     $stderr.puts "ERROR: Could not get cloudwatch stats: #{metric}"
+    $stderr.puts "ERROR:   - #{e.to_s}"
     $stderr.puts "  - parameters: #{params.inspect}" if $debug
+    exit 1
+  end
+
+  if metrics && metrics[:datapoints] && metrics[:datapoints][0] && metrics[:datapoints][0][:timestamp]
+    # Cloudwatch doesn't necessarily sort the values. Ensure that they are.
+    metrics[:datapoints].sort!{|a,b| a[:timestamp] <=> b[:timestamp]}
   end
   
   return metrics
@@ -667,7 +716,7 @@ opts.each do |opt,arg|
     when '--region'
       if (!arg.nil? && arg != "" && arg != "$")
         regionOverride    = arg
-        $stderr.puts "region: #{regionOverride}"
+        $stderr.puts "region: #{regionOverride}" if $DEBUG
       end
     when '--access_key'
       accessKeyOverride = arg
@@ -700,8 +749,10 @@ opts.each do |opt,arg|
       scriptAction      = "get-metrics"
     when '--verbose'
       $verbose          = true
+      $verboseLevel     = VERBOSE
     when '--debug'
       $debug            = true
+      $verboseLevel     = DEBUG
     when '--critical'
       thresholdCritical = parseThreshold(arg)
     when '--warning'
@@ -730,7 +781,7 @@ end
 #--- set the bucket size to 60 or 120 seconds.
 
 statisticsPeriod = statisticsWindow if (optPeriod.nil? && !optWindow.nil?)
-$stderr.puts "* Setting up statistics window = #{statisticsWindow} and statistics period = #{statisticsPeriod}" if $debug
+logIt("* Setting up statistics window = #{statisticsWindow} and statistics period = #{statisticsPeriod}", DEBUG)
 
 $verbose = true if $debug
 
@@ -739,10 +790,10 @@ $verbose = true if $debug
 #============================================
 
 if File.exist?(configFile)
-  $stderr.puts "* Reading config file #{configFile}" if $debug
+  logIt("* Reading config file #{configFile}", DEBUG)
   config = YAML.load(File.read(configFile))
 else
-  $stderr.puts "WARNING: #{configFile} does not exist" if $verbose
+  logIt("WARNING: #{configFile} does not exist", VERBOSE)
 end
 
 #============================================
@@ -759,10 +810,10 @@ elsif namespace.eql?(AWS_NAMESPACE_S3)
   dimensions = [{:name => "LoadBalancerName", :value => instance_id}]
 end
 
-$stderr.puts "* Setting up dimensions to #{dimensions}" if $debug
+logIt("* Setting up dimensions to #{dimensions}", DEBUG)
 
 
-$stderr.puts "* AWS Config" if $debug
+logIt("* AWS Config", DEBUG)
 
 AWS.config(config["aws"]) unless config.nil?
 #--- if --region was used
@@ -807,7 +858,7 @@ if (scriptAction == "billing")
 
   if ( metrics && metrics[:datapoints].count > 0)
     lastMetric = metrics[:datapoints][-1]
-    $stderr.puts "  - lastMetric: #{lastMetric.inspect}" if $debug
+    logIt("  - lastMetric: #{lastMetric.inspect}", DEBUG)
     retCode=checkThresholds(lastMetric[:maximum], thresholdWarning, thresholdCritical)
     billingWarning = (!thresholdWarning.nil?) ? thresholdWarning[:ceiling] : ""
     billingCritical = (!thresholdCritical.nil?) ? thresholdCritical[:ceiling] : ""
@@ -831,15 +882,15 @@ end
 #--- EC2-instances
   metrics = getCloudwatchStatistics(namespace, metric, statistics, dimensions, statisticsWindow, statisticsPeriod)
 
-  $stderr.puts "  - Number of elements #{metrics[:datapoints].count}" if $verbose
-  $stderr.puts "  - Metrics: #{metrics}" if $debug
+  logIt("  - Number of elements #{metrics[:datapoints].count}", VERBOSE)
+  logIt("  - Metrics: #{metrics}", DEBUG)
   
   instanceRunning=false
   if (metrics[:datapoints].count > 0)
     output = metrics[:datapoints][-1]
     instanceRunning = true
   else
-    $stderr.puts "No data delivered from CloudWatch (probably no activity)" if $verbose
+    logIt("No data delivered from CloudWatch (probably no activity)", VERBOSE)
     output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => Time.now(), :unit => 0}
     instanceRunning = EC2InstanceRunning(instance_id) if (namespace == AWS_NAMESPACE_EC2)
     instanceRunning = true if (namespace == AWS_NAMESPACE_ELB)
@@ -852,7 +903,7 @@ end
     retCode=checkThresholds(reportValue, thresholdWarning, thresholdCritical)
   
     #--- output the header message
-    $stderr.puts "  - Timestamp: #{Time.at(output[:timestamp])}" if $debug
+    logIt("  - Timestamp: #{Time.at(output[:timestamp])}", DEBUG)
     printf "#{retCode[:msg]} - Id: #{instance_id} #{metric}, Value: %.6f Unit: #{output[:unit]} (#{Time.at(output[:timestamp]).strftime("%Y-%m-%d %H:%M:%S %Z")})\n", reportValue
     #--- output nagios perfdata format
   
@@ -863,5 +914,5 @@ end
   end
   
 
-$stderr.puts "* Ret: #{retCode[:value].to_s}" if $verbose
+logIt("* Ret: #{retCode[:value].to_s}", VERBOSE)
 exit retCode[:value]
