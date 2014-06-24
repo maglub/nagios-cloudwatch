@@ -120,7 +120,7 @@ thresholdWarning  = nil
 optListMetrics    = false
 optListInstances  = false
 #--- optNoRunCheck -> false => check if the instance is running, before fetching metrics
-optNoRunCheck     = true
+optNoRunCheck     = false
 
 scriptAction      = "list-instances" #-- default action --list-instances
 
@@ -894,7 +894,8 @@ end
     logIt("No data delivered from CloudWatch (probably no activity)", VERBOSE)
     output = {:average => 0, :minimum => 0, :maximum => 0, :sum => 0, :timestamp => Time.now(), :unit => 0}
     instanceRunning = EC2InstanceRunning(instance_id) if (namespace == AWS_NAMESPACE_EC2)
-    instanceRunning = true if (namespace == AWS_NAMESPACE_ELB)
+    #--- check if the instance is running if the metrics return empty, unless optNoRunCheck is set "--no-run-check"
+    instanceRunning = (optNoRunCheck) ? true : EC2InstanceRunning(instance_id) if (namespace == AWS_NAMESPACE_EC2)
   end
   
   if (instanceRunning)
