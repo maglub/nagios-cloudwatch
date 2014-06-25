@@ -815,7 +815,7 @@ elsif namespace.eql?(AWS_NAMESPACE_S3)
   dimensions = [{:name => "LoadBalancerName", :value => instance_id}]
 end
 
-logIt("* Setting up dimensions to #{dimensions}", DEBUG)
+logIt("* Setting up namespace dimensions to #{dimensions.inspect}", DEBUG)
 
 
 logIt("* AWS Config", DEBUG)
