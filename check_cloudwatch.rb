@@ -727,6 +727,7 @@ opts.each do |opt,arg|
       if (!arg.nil? && arg != "" && arg != "$")
         secretKeyOverride = arg
       end
+    when '--instance'
       instance_id       = arg
     when '--namespace'
       namespace         = arg
@@ -814,7 +815,7 @@ elsif namespace.eql?(AWS_NAMESPACE_S3)
   dimensions = [{:name => "LoadBalancerName", :value => instance_id}]
 end
 
-logIt("* Setting up dimensions to #{dimensions}", DEBUG)
+logIt("* Setting up namespace dimensions to #{dimensions.inspect}", DEBUG)
 
 
 logIt("* AWS Config", DEBUG)
