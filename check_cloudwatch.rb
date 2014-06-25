@@ -720,9 +720,13 @@ opts.each do |opt,arg|
         $stderr.puts "region: #{regionOverride}" if $DEBUG
       end
     when '--access_key'
-      accessKeyOverride = arg
+      if (!arg.nil? && arg != "" && arg != "$")
+        accessKeyOverride = arg
+      end
     when '--secret_key'
-      secretKeyOverride = arg
+      if (!arg.nil? && arg != "" && arg != "$")
+        secretKeyOverride = arg
+      end
     when '--instance'
       instance_id       = arg
     when '--namespace'
