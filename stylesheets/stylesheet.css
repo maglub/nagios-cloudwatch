@@ -103,8 +103,10 @@ footer p {
 
 a {
   text-decoration: none;
-  color: #007edf;
+  color: #000000;
   text-shadow: none;
+  font-weight: bold;
+  
 
   transition: color 0.5s ease;
   transition: text-shadow 0.5s ease;
@@ -277,13 +279,14 @@ Full-Width Styles
   z-index: 10;
   padding: 10px 50px 10px 10px;
   color: #fff;
-  background: url('../images/blacktocat.png') #0090ff no-repeat 95% 50%;
+  background: url('images/blacktocat.png') #0090ff no-repeat 95% 50%;
   font-weight: 700;
   box-shadow: 0 0 10px rgba(0,0,0,.5);
   border-bottom-left-radius: 2px;
   border-bottom-right-radius: 2px;
 }
 
+/*
 #header_wrap {
   background: #212121;
   background: -moz-linear-gradient(top, #373737, #212121);
@@ -292,9 +295,18 @@ Full-Width Styles
   background: -o-linear-gradient(top, #373737, #212121);
   background: linear-gradient(top, #373737, #212121);
 }
+*/
 
+#header_wrap {
+  	width:100%;
+	background: #fff url('../images/header.png') top left repeat-x;
+	height:220px;
+	clear:left;
+	border-top:4px solid #4286cc;
+	overflow:hidden;
+	}
 #header_wrap .inner {
-  padding: 50px 10px 30px 10px;
+  padding: 5px 10px 30px 10px;
 }
 
 #project_title {
