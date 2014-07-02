@@ -50,6 +50,7 @@
 	</li>
 </ul>
 
+<img src=images/op5-services-view.png>
 <h1><a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation:</h1>
 
 3 simple steps
@@ -219,7 +220,7 @@ sudo gem install aws-sdk --no-ri --no-rdoc
 
 <ul>
 <li>Check an ELB (Elastic Load Balancer) for the number of healthy hosts. </li>
-</ul><pre><code>./check_cloudwatch.rb --instance="&lt;INSTANCE_NAME&gt;" --namespace="AWS/ELB" --metric="HealthyHostCount" --window=120 --period=60 --critical=:1+ --warning=:2+
+</ul><pre><code>./check_cloudwatch.rb --instance="&lt;INSTANCE_NAME&gt;" --elb --metric="HealthyHostCount" --window=120 --period=60 --critical=:1+ --warning=:2+
 OK - Metric: HealthyHostCount, Last Average: 2.0 Count (2014-06-14 13:34:00 UTC)
 |Average=2.0,Minimum=2.0,Maximum=2.0,Sum=240.0
 </code></pre>
@@ -259,16 +260,16 @@ OK - Metric: HealthyHostCount, Last Average: 2.0 Count (2014-06-14 13:34:00 UTC)
 
 <p>You can list available metrics for your instance, your load balancer, etc, by using the --list-metrics parameter.</p>
 
-<p>./check_cloudwatch.rb --namespace="AWS/EC2" -i  --list-metrics</p>
+<p><pre><code>./check_cloudwatch.rb --ec2 -i INSTANCE_ID  --list-metrics</code></pre></p>
 
 <h2>
 <a name="statistics-window-and-statistics-period" class="anchor" href="#statistics-window-and-statistics-period"><span class="octicon octicon-link"></span></a>Statistics window, and statistics period</h2>
 
-<p>The collection of AWS metrics is not done every minute. For example CPUUtilization is collected every 5 minutes. If you are asking for a window of 60 seconds and a period of 60 seconds, it is very likely that Cloudwatch will return an empty result set since there is no data to be presented for that period. This is a feature of the AWS Cloudwatch.</p>
+<p>The collection of AWS metrics is not done every minute. For example CPUUtilization is collected every 5 minutes. If you are asking for a window of 60 seconds and a period of 60 seconds, it is very likely that Cloudwatch will return an empty result set since there is no data to be presented for that period. This is a feature of how the AWS Cloudwatch data is collected.</p>
 
 <p>The workaround for this is to ask for a longer period, say 10 minutes or longer, to make sure you will get at least one metric in your result set.</p>
 
-<p>./check_cloudwatch.rb --namespace="AWS/EC2" -i  --metric="CPUUtilization" --window=600 --period=60</p>
+<p>./check_cloudwatch.rb --ec2 -i INSTANCE_ID --metric="CPUUtilization" --window=600 --period=60</p>
       </section>
     </div>
 
