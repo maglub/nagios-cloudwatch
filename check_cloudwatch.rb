@@ -853,7 +853,9 @@ if (scriptAction == "powerstate" && namespace == AWS_NAMESPACE_EC2)
   checkValue = (instanceRunning) ? 1:0
   retCode = checkThresholds(checkValue, thresholdWarning, thresholdCritical)
 
-  printf "#{retCode[:msg]} - Id: #{instance_id} Powerstate: %s Metric: (#{Time.now().strftime("%Y-%m-%d %H:%M:%S %Z")})\n", (checkValue == 0) ? "off" : "on"
+#  logIt("  - Timestamp: #{Time.at(output[:timestamp])}", DEBUG)
+
+  printf "#{retCode[:msg]} - Id: #{instance_id} Powerstate: %s\n", (checkValue == 0) ? "off" : "on"
   exit retCode[:value]
 
 end
