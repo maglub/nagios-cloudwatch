@@ -468,6 +468,8 @@ def EC2InstanceRunning(instanceId)
 
 #  $stderr.puts response if $debug
   $stderr.puts "  - Done checking running state of #{instanceId} (#{response})" if $debug
+
+  return response
   if (response == "running")
     return "running"
   else
