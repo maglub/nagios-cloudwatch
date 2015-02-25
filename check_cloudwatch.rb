@@ -462,7 +462,7 @@ def EC2InstanceRunning(instanceId)
     response = aws_api.client.describe_instances({:instance_ids => [ instanceId ]})[:reservation_set][0][:instances_set][0][:instance_state][:name]
   rescue Exception => e
     $stderr.puts "  - Instance id does not exist" if $debug
-    return "terminated"
+    return "instance does not exist"
   end
 
 
@@ -916,12 +916,14 @@ if (scriptAction == "powerstate" && namespace == AWS_NAMESPACE_EC2)
   checkValue = (instanceRunning == "running") ? 1:0
   powerstateMsg = ""
 
-  $stderr.puts "instanceRunning: #{instanceRunning}"
-  if ( instanceRunning != "terminated" )
-    powerstateMsg = (checkValue == 0 ) ? "off" : "on"
-  else
-    powerstateMsg = "instance does not exist"
-  end
+  $stderr.puts "instanceRunning: #{instanceRunning}" if $debug
+
+  #if ( instanceRunning != "terminated" )
+  #  powerstateMsg = (checkValue == 0 ) ? "off" : "on"
+  #else
+  #  powerstateMsg = "instance does not exist"
+  #end
+  powerstateMsg = instanceRunning
 
   retCode = checkThresholds(checkValue, thresholdWarning, thresholdCritical)
 
