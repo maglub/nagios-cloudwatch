@@ -765,7 +765,16 @@ opts.each do |opt,arg|
       exit 0
     when '--config'
       if (!arg.nil? && arg != "" && arg != "$")
-        configFile        = arg 
+        if (File.exist?(arg))
+          configFile        = arg 
+        else
+          configFile = File.expand_path(configDir + '/' + arg)
+        end
+        
+        if (! File.exist?(configFile))
+          $stderr.puts ("Error: config file #{arg} could not be found...")
+          exit 1
+        end
       end
     when '--region'
       if (!arg.nil? && arg != "" && arg != "$")
