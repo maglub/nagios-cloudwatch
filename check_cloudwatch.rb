@@ -370,7 +370,7 @@ def listEC2Instances(noMonitoringTag, printTags)
     curInstance[:tag_set].each do | item |
       case item[:key]
         when 'Name'
-          instanceName = (item[:value].nil?) ? "" : item[:value]
+          instanceName = (item[:value].nil?) ? "" : item[:value].gsub(' ', '-')
         when noMonitoringTag
           noMonitoring = item[:value].nil? ? "" : item[:value]
       end
