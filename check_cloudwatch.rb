@@ -364,7 +364,7 @@ def listEC2Instances(noMonitoringTag, printTags)
     instanceName     = "" 
     noMonitoring     = "" 
     instanceId       = curInstance[:instance_id]
-    privateIpAddress = curInstance[:private_ip_address]
+    privateIpAddress = (curInstance[:private_ip_address].nil?) ? "nil" : curInstance[:private_ip_address]
     availabilityZone = curInstance[:placement][:availability_zone]
   
     curInstance[:tag_set].each do | item |
