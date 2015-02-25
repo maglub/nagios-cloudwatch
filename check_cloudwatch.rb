@@ -771,8 +771,8 @@ opts.each do |opt,arg|
           configFile = File.expand_path(configDir + '/' + arg)
         end
         
-        if (! File.exist?(configFile))
-          $stderr.puts ("Error: config file #{arg} could not be found...")
+        if !File.exist?(configFile)
+          $stderr.puts "Error: config file #{arg} could not be found..."
           exit 1
         end
       end
@@ -914,6 +914,7 @@ if (scriptAction == "powerstate" && namespace == AWS_NAMESPACE_EC2)
   checkValue = (instanceRunning == "running") ? 1:0
   powerstateMsg = ""
 
+  $stderr.puts "instanceRunning: #{instanceRunning}"
   if ( instanceRunning != "terminated" )
     powerstateMsg = (checkValue == 0 ) ? "off" : "on"
   else
