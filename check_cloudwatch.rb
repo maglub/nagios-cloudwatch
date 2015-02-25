@@ -386,7 +386,7 @@ def listEC2Instances(noMonitoringTag, printTags)
     end
   
     $stderr.puts curTags if $debug
-    printf "Name: %-26s Id: %-14s privateIp: %-18s State: %-10s Zone: %s", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
+    printf "Name: %-30s Id: %-14s privateIp: %-18s State: %-10s Zone: %s", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
 
     printTagArray.each do |printTag|
       printf " %s: %s", printTag, (curTags[printTag] == "") ? "nil" : curTags[printTag]
