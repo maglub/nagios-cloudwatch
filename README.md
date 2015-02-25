@@ -77,7 +77,7 @@ sudo apt-get install libxslt-dev libxml2-dev
 sudo apt-get install build-essential
 
 #sudo gem install aws-sdk-core --pre
-sudo gem install aws-sdk -v 1.15
+sudo gem install aws-sdk -v 1.15 	
 ````
 
 Note: to make ruby1.9.1 default on your system, follow the instructions on:
