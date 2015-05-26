@@ -37,6 +37,7 @@ AWS_NAMESPACE_ELB             = "AWS/ELB"
 AWS_NAMESPACE_BILLING         = "AWS/Billing"
 AWS_NAMESPACE_DATATRANSFER    = "AWS/Data"
 AWS_NAMESPACE_S3              = "AWS/S3"
+AWS_NAMESPACE_SYSTEM_LINUX              = "System/Linux"
 
 AWS_METRIC_ELB = "HealthyHostCount" #Default metric
 
@@ -293,6 +294,8 @@ def listMetrics(namespace, instance_id)
       dimensionCriteria=""
     when AWS_NAMESPACE_S3
       dimensionCriteria="Name"
+    when AWS_NAMESPACE_SYSTEM_LINUX
+      dimensionCriteria="InstanceId"
     else
       return 0
   end
@@ -361,8 +364,8 @@ def listEC2Instances(noMonitoringTag, printTags)
     
     curInstance = instance[:instances_set][0]
   
-    instanceName     = "" 
-    noMonitoring     = "" 
+    instanceName     = "nil" 
+    noMonitoring     = "nil" 
     instanceId       = curInstance[:instance_id]
     privateIpAddress = (curInstance[:private_ip_address].nil?) ? "nil" : curInstance[:private_ip_address]
     availabilityZone = curInstance[:placement][:availability_zone]
@@ -875,6 +878,8 @@ elsif namespace.eql?(AWS_NAMESPACE_ELB)
   dimensions = [{:name => "LoadBalancerName", :value => instance_id}]
 elsif namespace.eql?(AWS_NAMESPACE_S3)
   dimensions = [{:name => "LoadBalancerName", :value => instance_id}]
+elsif namespace.eql?(AWS_NAMESPACE_SYSTEM_LINUX)
+  dimensions = [{:name => "InstanceId", :value => instance_id} ]
 end
 
 logIt("* Setting up namespace dimensions to #{dimensions.inspect}", DEBUG)
