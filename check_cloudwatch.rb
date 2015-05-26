@@ -37,6 +37,7 @@ AWS_NAMESPACE_ELB             = "AWS/ELB"
 AWS_NAMESPACE_BILLING         = "AWS/Billing"
 AWS_NAMESPACE_DATATRANSFER    = "AWS/Data"
 AWS_NAMESPACE_S3              = "AWS/S3"
+AWS_NAMESPACE_SYSTEM_LINUX              = "System/Linux"
 
 AWS_METRIC_ELB = "HealthyHostCount" #Default metric
 
@@ -293,6 +294,8 @@ def listMetrics(namespace, instance_id)
       dimensionCriteria=""
     when AWS_NAMESPACE_S3
       dimensionCriteria="Name"
+    when AWS_NAMESPACE_SYSTEM_LINUX
+      dimensionCriteria="InstanceId"
     else
       return 0
   end
@@ -325,7 +328,7 @@ end
 #-------------------------------------------------------------------
 # listEC2Instances
 #-------------------------------------------------------------------
-def listEC2Instances(noMonitoringTag)
+def listEC2Instances(noMonitoringTag, printTags)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug
 
   aws_api = AWS::EC2.new()
@@ -336,38 +339,69 @@ def listEC2Instances(noMonitoringTag)
     $stderr.puts "ERROR:   - #{e.to_s}"
     exit 1
   end
-
-
+  
+  #--- initiate print tags from config file
+  printTagArray = []
+  if ! printTags.nil?
+    printTagArray=printTags.split(",")
+  end
+  
+  
+  
   instances = response[:reservation_set]
   
   #--- loop through all instances
   instances.each do |instance|
+
+    #--- initialize the curTags (used to catch tags configured in config.yml)
+    curTags = Hash[]
+    printTagArray.each do |printTag|
+      curTags[printTag] = "" 
+      $stderr.puts "initializing tag: #{printTag}"  if $debug
+    end
+
+    $stderr.puts curTags  if $debug
+    
     curInstance = instance[:instances_set][0]
   
-    instanceName     = "" 
-    noMonitoring     = "" 
+    instanceName     = "nil" 
+    noMonitoring     = "nil" 
     instanceId       = curInstance[:instance_id]
-    privateIpAddress = curInstance[:private_ip_address]
+    privateIpAddress = (curInstance[:private_ip_address].nil?) ? "nil" : curInstance[:private_ip_address]
     availabilityZone = curInstance[:placement][:availability_zone]
   
     curInstance[:tag_set].each do | item |
       case item[:key]
         when 'Name'
-          instanceName = item[:value]
+          instanceName = (item[:value].nil?) ? "nil" : item[:value].gsub(' ', '-')
         when noMonitoringTag
-          noMonitoring = item[:value].nil? ? "" : item[:value]
+          noMonitoring = item[:value].nil? ? "nil" : item[:value]
       end
+
+      #--- populate the print tags
+      printTagArray.each do |printTag|
+        if (item[:key] == printTag)
+            $stderr.puts "Tag: #{printTag}" if $debug
+            curTags[printTag] = (item[:value].nil?) ? "nil" : item[:value]
+        end
+      end
+
     end
   
-    printf "Name: %-20s Id: %-14s privateIp: %-18s State: %-10s Zone: %s\n", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
+    $stderr.puts curTags if $debug
+    printf "Name: %-35s Id: %-14s privateIp: %-18s State: %-10s Zone: %s", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
 
+    printTagArray.each do |printTag|
+      printf " %s: %s", printTag, (curTags[printTag] == "") ? "nil" : curTags[printTag]
+    end
+    printf "\n"
   end
 end
 
 #-------------------------------------------------------------------
-# listEC2Instances
+# listELBInstances
 #-------------------------------------------------------------------
-def listELBInstances(noMonitoringTag)
+def listELBInstances(noMonitoringTag, printTags)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug
 
   aws_api = AWS::ELB.new()
@@ -379,18 +413,40 @@ def listELBInstances(noMonitoringTag)
     exit 1
   end
 
+  #--- initiate print tags from config file
+  printTagArray = []
+  if ! printTags.nil?
+    printTagArray=printTags.split(",")
+  end
+
   instances = response[:load_balancer_descriptions]
+  $stderr.puts "response: #{response}" if $debug
 
   #--- loop through all instances
   instances.each do |instance|
+
+    #--- initialize the curTags (used to catch tags configured in config.yml)
+    curTags = Hash[]
+    printTagArray.each do |printTag|
+      curTags[printTag] = "" 
+      $stderr.puts "initializing tag: #{printTag}"  if $debug
+    end
+    
+    
+    #--- print the load balancer
     printf "Name: %-20s Zone: ", instance[:load_balancer_name]
     numZones=0
     instance[:availability_zones].each do | zone|
-      print ", " if (numZones > 0)
+      print "," if (numZones > 0)
       print zone
       numZones+=1
     end
-    puts
+    
+    printTagArray.each do |printTag|
+      printf " %s: %s", printTag, (curTags[printTag] == "") ? "nil" : curTags[printTag]
+    end
+    
+    printf "\n"
   end
 end
 
@@ -399,26 +455,26 @@ end
 # EC2InstanceRunning
 #-------------------------------------------------------------------
 def EC2InstanceRunning(instanceId)
-  $stderr.puts "* Entering: #{thisMethod()}" if $debug 
+  $stderr.puts "* Entering: #{thisMethod()}" if $debug
   $stderr.puts "  - Checking running state of #{instanceId}" if $debug
 
   aws_api = AWS::EC2.new()
-   
+
   #--- get the instance running state
   begin
     response = aws_api.client.describe_instances({:instance_ids => [ instanceId ]})[:reservation_set][0][:instances_set][0][:instance_state][:name]
   rescue Exception => e
-    $stderr.puts "ERROR:   - #{e.to_s}"
-    exit 1
+    $stderr.puts "  - Instance id does not exist" if $debug
+    return "instance does not exist"
   end
 
-
-#  $stderr.puts response if $debug
   $stderr.puts "  - Done checking running state of #{instanceId} (#{response})" if $debug
+
+  return response
   if (response == "running")
-    return true
+    return "running"
   else
-    return false
+    return "not running"
   end
 end
 
@@ -712,7 +768,16 @@ opts.each do |opt,arg|
       exit 0
     when '--config'
       if (!arg.nil? && arg != "" && arg != "$")
-        configFile        = arg 
+        if (File.exist?(arg))
+          configFile        = arg 
+        else
+          configFile = File.expand_path(configDir + '/' + arg)
+        end
+        
+        if !File.exist?(configFile)
+          $stderr.puts "Error: config file #{arg} could not be found..."
+          exit 1
+        end
       end
     when '--region'
       if (!arg.nil? && arg != "" && arg != "$")
@@ -813,6 +878,8 @@ elsif namespace.eql?(AWS_NAMESPACE_ELB)
   dimensions = [{:name => "LoadBalancerName", :value => instance_id}]
 elsif namespace.eql?(AWS_NAMESPACE_S3)
   dimensions = [{:name => "LoadBalancerName", :value => instance_id}]
+elsif namespace.eql?(AWS_NAMESPACE_SYSTEM_LINUX)
+  dimensions = [{:name => "InstanceId", :value => instance_id} ]
 end
 
 logIt("* Setting up namespace dimensions to #{dimensions.inspect}", DEBUG)
@@ -828,14 +895,13 @@ AWS.config(:access_key_id => accessKeyOverride) unless accessKeyOverride.to_s.em
 #--- if --secret was used
 AWS.config(:secret_access_key => secretKeyOverride) unless secretKeyOverride.to_s.empty?
 
-
 #--- list instances (--list-instances)
 if (scriptAction == "list-instances")
   case namespace
   when AWS_NAMESPACE_EC2
-    listEC2Instances("")
+    listEC2Instances("", config["app"]["ec2Tags"])
   when AWS_NAMESPACE_ELB
-    listELBInstances("")
+    listELBInstances("", config["app"]["elbTags"])
   else
     puts "Sorry, listing of namespace #{namespace} is not yet implemented"
   end
@@ -850,12 +916,21 @@ end
 
 if (scriptAction == "powerstate" && namespace == AWS_NAMESPACE_EC2)
   instanceRunning = EC2InstanceRunning(instance_id)
-  checkValue = (instanceRunning) ? 1:0
+  checkValue = (instanceRunning == "running") ? 1:0
+  powerstateMsg = ""
+
+  $stderr.puts "instanceRunning: #{instanceRunning}" if $debug
+
+  #if ( instanceRunning != "terminated" )
+  #  powerstateMsg = (checkValue == 0 ) ? "off" : "on"
+  #else
+  #  powerstateMsg = "instance does not exist"
+  #end
+  powerstateMsg = instanceRunning
+
   retCode = checkThresholds(checkValue, thresholdWarning, thresholdCritical)
 
-#  logIt("  - Timestamp: #{Time.at(output[:timestamp])}", DEBUG)
-
-  printf "#{retCode[:msg]} - Id: #{instance_id} Powerstate: %s\n", (checkValue == 0) ? "off" : "on"
+  printf "#{retCode[:msg]} - Id: #{instance_id} Powerstate: %s\n", powerstateMsg
   exit retCode[:value]
 
 end
