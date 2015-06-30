@@ -36,6 +36,48 @@ git clone git@github.com:maglub/nagios-cloudwatch.git
 ````
 
 
+## AWS
+
+* Create a new policy for read only access: https://console.aws.amazon.com/iam/home?region=us-west-2#policies
+** Create your own policy, policy name (example) "KMG-Group-AWS-Monitoring", Description (example) "Read only policy needed for read only access for external AWS monitoring"
+
+```
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "ec2:Describe*",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "elasticloadbalancing:Describe*",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:ListMetrics",
+        "cloudwatch:GetMetricStatistics",
+        "cloudwatch:Describe*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "autoscaling:Describe*",
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+* Create a new user (which will get read only access): https://console.aws.amazon.com/iam/home?region=us-west-2#users
+** Make sure you save the credentials/tokens
+** Attach the policy above
+
+
 ## config.yml
 
 * Create a read-only user in AWS and associate it with your environment
