@@ -345,14 +345,13 @@ def listEC2Instances(noMonitoringTag, printTags)
   if ! printTags.nil?
     printTagArray=printTags.split(",")
   end
-  
-  
-  
+    
   instances = response[:reservation_set]
-  
+
   #--- loop through all instances
   instances.each do |instance|
 
+    $stderr.puts "Preparing new instance" if $debug
     #--- initialize the curTags (used to catch tags configured in config.yml)
     curTags = Hash[]
     printTagArray.each do |printTag|
@@ -362,39 +361,39 @@ def listEC2Instances(noMonitoringTag, printTags)
 
     $stderr.puts curTags  if $debug
     
-    curInstance = instance[:instances_set][0]
-  
-    instanceName     = "nil" 
-    noMonitoring     = "nil" 
-    instanceId       = curInstance[:instance_id]
-    privateIpAddress = (curInstance[:private_ip_address].nil?) ? "nil" : curInstance[:private_ip_address]
-    availabilityZone = curInstance[:placement][:availability_zone]
-  
-    curInstance[:tag_set].each do | item |
-      case item[:key]
-        when 'Name'
-          instanceName = (item[:value].nil?) ? "nil" : item[:value].gsub(' ', '-')
-        when noMonitoringTag
-          noMonitoring = item[:value].nil? ? "nil" : item[:value]
-      end
-
-      #--- populate the print tags
-      printTagArray.each do |printTag|
-        if (item[:key] == printTag)
-            $stderr.puts "Tag: #{printTag}" if $debug
-            curTags[printTag] = (item[:value].nil?) ? "nil" : item[:value]
+    instance[:instances_set].each do |curInstance|    
+      instanceName     = "nil" 
+      noMonitoring     = "nil" 
+      instanceId       = curInstance[:instance_id]
+      privateIpAddress = (curInstance[:private_ip_address].nil?) ? "nil" : curInstance[:private_ip_address]
+      availabilityZone = curInstance[:placement][:availability_zone]
+    
+      curInstance[:tag_set].each do | item |
+        case item[:key]
+          when 'Name'
+            instanceName = (item[:value].nil?) ? "nil" : item[:value].gsub(' ', '-')
+          when noMonitoringTag
+            noMonitoring = item[:value].nil? ? "nil" : item[:value]
         end
-      end
-
-    end
   
-    $stderr.puts curTags if $debug
-    printf "Name: %-35s Id: %-14s privateIp: %-18s State: %-10s Zone: %s", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
-
-    printTagArray.each do |printTag|
-      printf " %s: %s", printTag, (curTags[printTag] == "") ? "nil" : curTags[printTag]
+        #--- populate the print tags
+        printTagArray.each do |printTag|
+          if (item[:key] == printTag)
+              $stderr.puts "Tag: #{printTag}" if $debug
+              curTags[printTag] = (item[:value].nil?) ? "nil" : item[:value]
+          end
+        end
+  
+      end
+    
+      $stderr.puts curTags if $debug
+      printf "Name: %-35s Id: %-14s privateIp: %-18s State: %-10s Zone: %s", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
+  
+      printTagArray.each do |printTag|
+        printf " %s: %s", printTag, (curTags[printTag] == "") ? "nil" : curTags[printTag]
+      end
+      printf "\n"
     end
-    printf "\n"
   end
 end
 
