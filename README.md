@@ -23,6 +23,8 @@ Possible checks:
 #Pre-requisites
 
 * Ruby environment with ruby version > 1.9.1 (see below)
+* Ruby 1.8.7 (current release on OP5 servers) works too
+* Note! As of 2016-02-05, this script does not work with ruby >2.0, sorry
 * Configuration file config.yml, unless you supply the credentials on the command line
 
 #Installation:
