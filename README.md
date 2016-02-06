@@ -178,6 +178,21 @@ sudo gem install aws-sdk -v 1.15.0 --no-ri --no-rdoc
 wget -O - https://github.com/maglub/nagios-cloudwatch/tarball/master | tar xvzf -
 ````
 
+### RedHat/CentOS 7.1 (ruby 1.9.3)
+
+````
+sudo yum -y update
+sudo yum -y install centos-release-scl
+sudo yum -y install ruby193 gem
+
+sudo yum install -y gcc make \
+  libxml2 libxml2-devel libxslt libxslt-devel \
+  rubygems ruby-devel
+
+sudo gem install aws-sdk -v 1.15.0 --no-ri --no-rdoc
+wget -O - https://github.com/maglub/nagios-cloudwatch/tarball/master | tar xvzf -
+````
+
 ## OP5 Appliance (CentOS)
 
 Pre-requisites already in place.
