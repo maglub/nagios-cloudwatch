@@ -107,9 +107,18 @@ aws:
 ````
 
 ## Ruby
-### Ubuntu 12.04 LTS
+### Ubuntu 14.04 LTS (ruby 1.9.3)
 
-If your installation come with ruby 1.8, you might have to start the script with `/usr/bin/ruby1.9.1 ./check_cloudwatch.rb`, unless you follow the second step on how to make ruby1.9.1 default in your installation.
+````
+sudo apt-get -y install ruby-dev libxslt-dev libxml2-dev
+sudo gem install aws-sdk -v 1.15
+wget -O - https://github.com/maglub/nagios-cloudwatch/tarball/master | tar xvzf -
+````
+
+### Ubuntu 12.04 LTS (ruby 1.9.3)
+
+On new Ubuntu 12.04 LTS installs, same as above (Ubuntu 14.04 LTS)
+For older installs, you might have to try the instructions here. If your installation come with ruby 1.8, you might have to start the script with `/usr/bin/ruby1.9.1 ./check_cloudwatch.rb`, unless you follow the second step on how to make ruby1.9.1 default in your installation.
 
 
 ````
@@ -120,7 +129,6 @@ sudo apt-get install -y ruby1.9.1 ruby1.9.1-dev \
 sudo apt-get install libxslt-dev libxml2-dev
 sudo apt-get install build-essential
 
-#sudo gem install aws-sdk-core --pre
 sudo gem install aws-sdk -v 1.15 	
 ````
 
@@ -152,21 +160,23 @@ sudo update-alternatives --install /usr/bin/ruby ruby /usr/bin/ruby1.9.1 400 \
  ruby --version
 ````
 
-### RedHat/CentOS
 
-https://gist.github.com/trevorrowe/1870314
+### RedHat/CentOS 6.7 (ruby 1.8.7)
 
-	sudo yum install -y gcc make \
-	libxml2 libxml2-devel libxslt libxslt-devel \
-	rubygems ruby-devel
-	 
-	sudo gem install nokogiri -- --with-xml2-lib=/usr/local/lib \
-	--with-xml2-include=/usr/local/include/libxml2 \
-	--with-xslt-lib=/usr/local/lib \
-	--with-xslt-include=/usr/local/include
-	 
-	sudo gem install aws-sdk --no-ri --no-rdoc
+````
+sudo yum install -y gcc make \
+libxml2 libxml2-devel libxslt libxslt-devel \
+rubygems ruby-devel
 
+sudo gem install nokogiri -v '1.5.0' -- --with-xml2-lib=/usr/local/lib \
+  --with-xml2-include=/usr/local/include/libxml2 \
+  --with-xslt-lib=/usr/local/lib \
+  --with-xslt-include=/usr/local/include
+
+sudo gem install aws-sdk -v 1.15.0 --no-ri --no-rdoc
+
+wget -O - https://github.com/maglub/nagios-cloudwatch/tarball/master | tar xvzf -
+````
 
 ## OP5 Appliance (CentOS)
 
