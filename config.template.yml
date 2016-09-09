@@ -2,19 +2,19 @@ aws:
   #======================
   #--- authentication
   #======================
-  access_key_id: YOUR_ACCESS_KEY
-  secret_access_key: YOUR_SECRET_KEY
+  :access_key_id: YOUR_ACCESS_KEY
+  :secret_access_key: YOUR_SECRET_KEY
   
   #========================================
   #--- default region, unless overridden on the command line
   #========================================
   #--- possible regions us-west-1 us-west-2 eu-west-1, etc...
-  region: us-west-2
+  :region: us-west-2
 
   #======================
   #--- Proxy config
   #======================
-  #proxy_uri: http://user:passwd@IP:PORT
+  #:proxy_uri: http://user:passwd@IP:PORT
   
 app:
   #==============================================================
@@ -22,4 +22,4 @@ app:
   #--- name of the instance tag in EC2 console you want to use to
   #--- exclude an instance from op5 monitoring
   #==============================================================
-  noMonitoringTag: noMonitoring
+  :noMonitoringTag: noMonitoring

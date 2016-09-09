@@ -1,4 +1,5 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
+
 #============================================
 # Script: check_ec2_meta_moniotor
 # Author: Magnus Luebeck, magnus.luebeck@kmggroup.ch
@@ -25,7 +26,7 @@
 #       http://exchange.nagios.org/directory/Plugins/Operating-Systems/*-Virtual-Environments/Others/Check_AWS_CloudWatch_metrics/details
 #============================================
 
-%w[ rubygems getoptlong yaml aws-sdk pp time].each { |f| require f }
+%w[ rubygems getoptlong yaml aws-sdk aws-sdk-core aws-sdk-resources pp time].each { |f| require f }
 $stdout.sync = true
 
 #============================================
@@ -281,7 +282,7 @@ def listMetrics(namespace, instance_id)
 
   logIt("* Entering: #{thisMethod()}", DEBUG)
 
-  aws_api = AWS::CloudWatch.new()
+  aws_api = Aws::CloudWatch::Client.new()
 
   case namespace
     when AWS_NAMESPACE_EC2
@@ -307,7 +308,7 @@ def listMetrics(namespace, instance_id)
   end
 
   begin
-    metrics = aws_api.client.list_metrics({:namespace=> namespace, :dimensions =>dimensions}).data[:metrics]
+    metrics = aws_api.list_metrics({:namespace=> namespace, :dimensions =>dimensions}).data[:metrics]
   rescue Exception => e
     logIt("ERROR:   - #{e.to_s}", NORMAL)
     exit 1
@@ -331,10 +332,10 @@ end
 def listEC2Instances(noMonitoringTag, printTags)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug
 
-  aws_api = AWS::EC2.new()
+  aws_api = Aws::EC2::Client.new()
   
   begin
-    response = aws_api.client.describe_instances
+    response = aws_api.describe_instances
   rescue Exception => e
     $stderr.puts "ERROR:   - #{e.to_s}"
     exit 1
@@ -346,7 +347,7 @@ def listEC2Instances(noMonitoringTag, printTags)
     printTagArray=printTags.split(",")
   end
     
-  instances = response[:reservation_set]
+  instances = response[:reservations]
 
   #--- loop through all instances
   instances.each do |instance|
@@ -361,14 +362,14 @@ def listEC2Instances(noMonitoringTag, printTags)
 
     $stderr.puts curTags  if $debug
     
-    instance[:instances_set].each do |curInstance|    
+    instance[:instances].each do |curInstance|
       instanceName     = "nil" 
       noMonitoring     = "nil" 
       instanceId       = curInstance[:instance_id]
       privateIpAddress = (curInstance[:private_ip_address].nil?) ? "nil" : curInstance[:private_ip_address]
       availabilityZone = curInstance[:placement][:availability_zone]
     
-      curInstance[:tag_set].each do | item |
+      curInstance[:tags].each do | item |
         case item[:key]
           when 'Name'
             instanceName = (item[:value].nil?) ? "nil" : item[:value].gsub(' ', '-')
@@ -387,7 +388,7 @@ def listEC2Instances(noMonitoringTag, printTags)
       end
     
       $stderr.puts curTags if $debug
-      printf "Name: %-35s Id: %-14s privateIp: %-18s State: %-10s Zone: %s", instanceName, instanceId, privateIpAddress, curInstance[:instance_state][:name], availabilityZone
+      printf "Name: %-35s Id: %-14s privateIp: %-18s State: %-10s Zone: %s", instanceName, instanceId, privateIpAddress, curInstance[:state][:name], availabilityZone
   
       printTagArray.each do |printTag|
         printf " %s: %s", printTag, (curTags[printTag] == "") ? "nil" : curTags[printTag]
@@ -403,10 +404,11 @@ end
 def listELBInstances(noMonitoringTag, printTags)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug
 
-  aws_api = AWS::ELB.new()
+  #aws_api = Aws::ELB::Client.new()
+  aws_api = Aws::ElasticLoadBalancing::Client.new()
 
   begin  
-    response = aws_api.client.describe_load_balancers
+    response = aws_api.describe_load_balancers
   rescue Exception => e
     $stderr.puts "ERROR:   - #{e.to_s}"
     exit 1
@@ -457,11 +459,11 @@ def EC2InstanceRunning(instanceId)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug
   $stderr.puts "  - Checking running state of #{instanceId}" if $debug
 
-  aws_api = AWS::EC2.new()
+  aws_api = Aws::EC2::Client.new()
 
   #--- get the instance running state
   begin
-    response = aws_api.client.describe_instances({:instance_ids => [ instanceId ]})[:reservation_set][0][:instances_set][0][:instance_state][:name]
+    response = aws_api.describe_instances({:instance_ids => [ instanceId ]})[:reservation_set][0][:instances_set][0][:instance_state][:name]
   rescue Exception => e
     $stderr.puts "  - Instance id does not exist" if $debug
     return "instance does not exist"
@@ -497,8 +499,8 @@ def getCloudwatchStatistics(namespace, metric, statistics, dimensions, window, p
 
   
   begin
-    aws_api = AWS::CloudWatch.new()
-    metrics = aws_api.client.get_metric_statistics( params  )
+    aws_api = Aws::CloudWatch::Client.new()
+    metrics = aws_api.get_metric_statistics( params  )
   rescue Exception => e
     $stderr.puts "ERROR: Could not get cloudwatch stats: #{metric}"
     $stderr.puts "ERROR:   - #{e.to_s}"
@@ -522,7 +524,7 @@ def awsGetBilling(namespace)
   $stderr.puts "* Entering: #{thisMethod()}" if $debug 
 
   #--- all billing is reported from us-east-1
-  AWS.config(:region=>'us-east-1')
+  Aws.config.update({:region=>'us-east-1'})
   
   $stderr.puts "  - Billing type: #{namespace.inspect}" if $debug
   case namespace
@@ -884,15 +886,15 @@ end
 logIt("* Setting up namespace dimensions to #{dimensions.inspect}", DEBUG)
 
 
-logIt("* AWS Config", DEBUG)
+logIt("* Aws Config", DEBUG)
 
-AWS.config(config["aws"]) unless config.nil?
+Aws.config.update(config ["aws"]) unless config.nil?
 #--- if --region was used
-AWS.config(:region => regionOverride) unless regionOverride.to_s.empty?
+Aws.config.update({:region => regionOverride}) unless regionOverride.to_s.empty?
 #--- if --access_key was used
-AWS.config(:access_key_id => accessKeyOverride) unless accessKeyOverride.to_s.empty?
+Aws.config.update({:access_key_id => accessKeyOverride}) unless accessKeyOverride.to_s.empty?
 #--- if --secret was used
-AWS.config(:secret_access_key => secretKeyOverride) unless secretKeyOverride.to_s.empty?
+Aws.config.update({:secret_access_key => secretKeyOverride}) unless secretKeyOverride.to_s.empty?
 
 #--- list instances (--list-instances)
 if (scriptAction == "list-instances")
