@@ -107,6 +107,12 @@ aws:
 ````
 
 ## Ruby
+### FreeBSD 10 (ruby 2.2.5 / AWS SDK v2)
+````
+pkg install ruby rubygem-aws-sdk ca_root_nss git
+git clone https://github.com/laurencegill/nagios-cloudwatch.git
+````
+
 ### Ubuntu 14.04 LTS (ruby 1.9.3)
 
 ````
@@ -244,7 +250,9 @@ Examples of valid thresholds are:
 
 You can list available metrics for your instance, your load balancer, etc, by using the --list-metrics parameter.
 
+````
   ./check_cloudwatch.rb --namespace="AWS/EC2" -i <instance_id> --list-metrics
+````
 
 ## Statistics window, and statistics period
 
@@ -252,7 +260,9 @@ The collection of AWS metrics is not done every minute. For example CPUUtilizati
 
 The workaround for this is to ask for a longer period, say 10 minutes or longer, to make sure you will get at least one metric in your result set.
 
+````
   ./check_cloudwatch.rb --namespace="AWS/EC2" -i <instance_id> --metric="CPUUtilization" --window=600 --period=60
+````
   
 
 
